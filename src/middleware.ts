@@ -12,6 +12,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   if (request.method === "GET") {
     return NextResponse.next();
   }
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/api/webhooks/")) {
+    return NextResponse.next();
+  }
   const originHeader = request.headers.get("Origin");
   const hostHeader =
     request.headers.get("Host") ?? request.headers.get("X-Forwarded-Host");

@@ -28,7 +28,13 @@ type SmsLog = {
   sentAt: string;
 };
 
-type Tenant = { id: string; name: string; phone: string | null };
+type Tenant = {
+  id: string;
+  name: string;
+  phone: string | null;
+  address?: string;
+  amount?: string;
+};
 type Template = { id: string; type: string; content: string; isActive: boolean };
 
 const MESSAGE_TYPE_LABELS: Record<string, string> = {
@@ -81,8 +87,8 @@ export function SmsPageClient({
       setCustomBody(
         replaceVars(selectedTemplate.content, {
           tenantName: selectedTenant.name,
-          amount: "",
-          address: "",
+          amount: selectedTenant.amount ?? "",
+          address: selectedTenant.address ?? "",
         })
       );
     } else if (!templateId) {
@@ -255,7 +261,8 @@ export function SmsPageClient({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>To</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Direction</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Message</TableHead>
                   <TableHead>Status</TableHead>
@@ -267,6 +274,13 @@ export function SmsPageClient({
                   <TableRow key={log.id}>
                     <TableCell className="font-medium">
                       {log.tenant?.name ?? log.toPhone}
+                    </TableCell>
+                    <TableCell>
+                      {log.direction === "inbound" ? (
+                        <Badge variant="outline">In</Badge>
+                      ) : (
+                        <Badge variant="secondary">Out</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {MESSAGE_TYPE_LABELS[log.messageType] ?? log.messageType}

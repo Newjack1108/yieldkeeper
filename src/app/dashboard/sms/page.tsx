@@ -10,7 +10,23 @@ export default async function SmsPage() {
   const [tenants, templates, logs, statusRes] = await Promise.all([
     db.tenant.findMany({
       where: { userId: user.id },
-      select: { id: true, name: true, phone: true, email: true },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        tenancies: {
+          where: { status: "active" },
+          include: {
+            property: { select: { id: true, address: true } },
+            rentSchedules: {
+              where: { status: "pending" },
+              orderBy: { dueDate: "asc" },
+              take: 1,
+            },
+          },
+        },
+      },
       orderBy: { name: "asc" },
     }),
     db.smsTemplate.findMany({
@@ -45,7 +61,25 @@ export default async function SmsPage() {
     sentAt: log.sentAt.toISOString(),
   }));
 
-  const tenantsWithPhone = tenants.filter((t) => t.phone);
+  const tenantsWithPhone = tenants
+    .filter((t) => t.phone)
+    .map((t) => {
+      const tenancy = t.tenancies?.[0];
+      const address = tenancy?.property?.address ?? "";
+      const amount =
+        tenancy?.rentSchedules?.[0]?.amountDue != null
+          ? String(Number(tenancy.rentSchedules[0].amountDue))
+          : tenancy?.rentAmount != null
+            ? String(Number(tenancy.rentAmount))
+            : "";
+      return {
+        id: t.id,
+        name: t.name,
+        phone: t.phone,
+        address,
+        amount: amount ? `£${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : "",
+      };
+    });
 
   return (
     <div className="space-y-8">
