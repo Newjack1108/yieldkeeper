@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -16,6 +17,21 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role === "estate_agent") {
+    const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+    if (propertyIds.length === 0) return NextResponse.json([]);
+    const tenancies = await db.tenancy.findMany({
+      where: { propertyId: { in: propertyIds } },
+      select: { tenantId: true },
+    });
+    const tenantIds = [...new Set(tenancies.map((t) => t.tenantId))];
+    if (tenantIds.length === 0) return NextResponse.json([]);
+    const tenants = await db.tenant.findMany({
+      where: { id: { in: tenantIds } },
+      orderBy: { name: "asc" },
+    });
+    return NextResponse.json(tenants);
+  }
   const tenants = await db.tenant.findMany({
     where: { userId: user.id },
     orderBy: { name: "asc" },
@@ -27,6 +43,9 @@ export async function POST(request: Request) {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await request.json();
   const parsed = createSchema.safeParse(body);

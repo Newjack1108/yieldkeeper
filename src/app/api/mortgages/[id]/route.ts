@@ -43,6 +43,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { id } = await params;
   const mortgage = await getMortgageForUser(id, user.id);
   if (!mortgage) {
@@ -58,6 +61,9 @@ export async function PATCH(
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
   const mortgage = await getMortgageForUser(id, user.id);
@@ -122,6 +128,9 @@ export async function DELETE(
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
   const mortgage = await getMortgageForUser(id, user.id);

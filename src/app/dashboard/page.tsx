@@ -39,14 +39,16 @@ export default async function DashboardPage() {
     complianceAlerts,
     inspectionAlerts,
   ] = await Promise.all([
-    getDashboardSummary(user.id),
-    getMonthlyIncome(user.id),
-    getExpenseBreakdown(user.id),
-    getUpcomingPayments(user.id),
-    getMaintenanceAlerts(user.id),
-    getComplianceAlerts(user.id),
-    getInspectionAlerts(user.id),
+    getDashboardSummary(user.id, user.role),
+    getMonthlyIncome(user.id, user.role),
+    getExpenseBreakdown(user.id, user.role),
+    getUpcomingPayments(user.id, user.role),
+    getMaintenanceAlerts(user.id, user.role),
+    getComplianceAlerts(user.id, user.role),
+    getInspectionAlerts(user.id, user.role),
   ]);
+
+  const isAgent = user.role === "estate_agent";
   return (
     <div className="space-y-8">
       <div>
@@ -68,20 +70,24 @@ export default async function DashboardPage() {
           value={dashboardSummary.occupiedUnits}
           icon={Users}
         />
-        <DashboardKpiCard
-          title="Monthly Income"
-          value={dashboardSummary.monthlyRentIncome}
-          icon={PoundSterling}
-          status="healthy"
-          format="currency"
-        />
-        <DashboardKpiCard
-          title="Outstanding Arrears"
-          value={dashboardSummary.outstandingArrears}
-          icon={AlertTriangle}
-          status="alert"
-          format="currency"
-        />
+        {!isAgent && (
+          <>
+            <DashboardKpiCard
+              title="Monthly Income"
+              value={dashboardSummary.monthlyRentIncome}
+              icon={PoundSterling}
+              status="healthy"
+              format="currency"
+            />
+            <DashboardKpiCard
+              title="Outstanding Arrears"
+              value={dashboardSummary.outstandingArrears}
+              icon={AlertTriangle}
+              status="alert"
+              format="currency"
+            />
+          </>
+        )}
         <DashboardKpiCard
           title="Open Maintenance"
           value={dashboardSummary.maintenanceOpen}
@@ -94,28 +100,33 @@ export default async function DashboardPage() {
           icon={ShieldCheck}
           status="warning"
         />
-        <DashboardKpiCard
-          title="Mortgage Due"
-          value={dashboardSummary.mortgageDue}
-          icon={Calendar}
-          format="currency"
-        />
-        <DashboardKpiCard
-          title="Insurance Renewal"
-          value={dashboardSummary.insuranceRenewal}
-          icon={FileCheck}
-          format="currency"
-        />
-        <DashboardKpiCard
-          title="Net Monthly Profit"
-          value={dashboardSummary.netMonthlyProfit}
-          icon={TrendingUp}
-          status="healthy"
-          format="currency"
-        />
+        {!isAgent && (
+          <>
+            <DashboardKpiCard
+              title="Mortgage Due"
+              value={dashboardSummary.mortgageDue}
+              icon={Calendar}
+              format="currency"
+            />
+            <DashboardKpiCard
+              title="Insurance Renewal"
+              value={dashboardSummary.insuranceRenewal}
+              icon={FileCheck}
+              format="currency"
+            />
+            <DashboardKpiCard
+              title="Net Monthly Profit"
+              value={dashboardSummary.netMonthlyProfit}
+              icon={TrendingUp}
+              status="healthy"
+              format="currency"
+            />
+          </>
+        )}
       </div>
 
-      {/* Charts */}
+      {/* Charts - hidden for estate agents */}
+      {!isAgent && (
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -140,9 +151,11 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Upcoming & Alerts */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {!isAgent && (
         <Card>
           <CardHeader>
             <CardTitle>Upcoming Payments</CardTitle>
@@ -172,6 +185,7 @@ export default async function DashboardPage() {
             </ul>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>

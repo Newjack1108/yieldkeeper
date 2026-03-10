@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { validateRequest } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { syncOverdueSchedules } from "@/lib/rent";
 import { RentPageClient } from "./rent-client";
 
@@ -8,16 +9,27 @@ export default async function RentPage() {
   const { user } = await validateRequest();
   if (!user) redirect("/sign-in");
 
-  await syncOverdueSchedules(user.id);
+  await syncOverdueSchedules(user.id, user.role);
 
-  const portfolios = await db.portfolio.findMany({
-    where: { userId: user.id },
-    include: { properties: { select: { id: true, address: true } } },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  if (propertyIds.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Rent Tracking</h1>
+          <p className="text-muted-foreground">
+            Track rent schedules and record payments
+          </p>
+        </div>
+        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+          No properties assigned. Contact your portfolio owner.
+        </div>
+      </div>
+    );
+  }
 
   const tenancies = await db.tenancy.findMany({
-    where: { property: { portfolioId: { in: portfolioIds } } },
+    where: { propertyId: { in: propertyIds } },
     include: {
       property: { select: { id: true, address: true } },
       tenant: { select: { id: true, name: true, email: true } },
@@ -35,7 +47,7 @@ export default async function RentPage() {
     by: ["tenancyId"],
     where: {
       status: "overdue",
-      tenancy: { property: { portfolioId: { in: portfolioIds } } },
+      tenancy: { propertyId: { in: propertyIds } },
     },
     _sum: { amountDue: true },
   });
@@ -71,16 +83,37 @@ export default async function RentPage() {
   });
 
   const properties = await db.property.findMany({
-    where: { portfolioId: { in: portfolioIds } },
+    where: { id: { in: propertyIds } },
     select: { id: true, address: true },
     orderBy: { address: "asc" },
   });
 
-  const tenants = await db.tenant.findMany({
-    where: { userId: user.id },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const tenantIds =
+    user.role === "estate_agent"
+      ? [
+          ...new Set(
+            (
+              await db.tenancy.findMany({
+                where: { propertyId: { in: propertyIds } },
+                select: { tenantId: true },
+              })
+            ).map((t) => t.tenantId)
+          ),
+        ]
+      : (
+          await db.tenant.findMany({
+            where: { userId: user.id },
+            select: { id: true },
+          })
+        ).map((t) => t.id);
+  const tenantList =
+    tenantIds.length > 0
+      ? await db.tenant.findMany({
+          where: { id: { in: tenantIds } },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
   return (
     <div className="space-y-8">
@@ -93,7 +126,7 @@ export default async function RentPage() {
       <RentPageClient
         initialTenancies={tenanciesWithArrears}
         properties={properties.map((p) => ({ id: p.id, address: p.address }))}
-        tenants={tenants}
+        tenants={tenantList}
       />
     </div>
   );

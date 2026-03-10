@@ -39,16 +39,24 @@ type Property = {
   occupancyStatus: string | null;
   notes: string | null;
   portfolio: { name: string };
+  estateAgentId?: string | null;
+  estateAgent?: { id: string; name: string } | null;
 };
 
 type Portfolio = { id: string; name: string };
 
+type EstateAgent = { id: string; name: string; company: string | null };
+
 export function PropertiesPageClient({
   initialProperties,
   portfolios,
+  estateAgents,
+  userRole,
 }: {
   initialProperties: Property[];
   portfolios: Portfolio[];
+  estateAgents: EstateAgent[];
+  userRole: string;
 }) {
   const router = useRouter();
   const [properties, setProperties] = useState(initialProperties);
@@ -59,6 +67,9 @@ export function PropertiesPageClient({
   const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? "");
   const [propertyType, setPropertyType] = useState("");
   const [occupancyStatus, setOccupancyStatus] = useState("vacant");
+  const [estateAgentId, setEstateAgentId] = useState<string | null>(null);
+
+  const isOwner = userRole === "portfolio_owner" || userRole === "admin";
 
   useEffect(() => {
     setProperties(initialProperties);
@@ -68,10 +79,12 @@ export function PropertiesPageClient({
     if (editing) {
       setPropertyType(editing.propertyType ?? "");
       setOccupancyStatus(editing.occupancyStatus ?? "vacant");
+      setEstateAgentId(editing.estateAgentId ?? null);
     } else {
       setPortfolioId(portfolios[0]?.id ?? "");
       setPropertyType("");
       setOccupancyStatus("vacant");
+      setEstateAgentId(null);
     }
   }, [editing, open, portfolios]);
 
@@ -97,6 +110,7 @@ export function PropertiesPageClient({
         ? Number(formData.get("currentValue"))
         : undefined,
       occupancyStatus: formData.get("occupancyStatus") || undefined,
+      estateAgentId: estateAgentId || undefined,
       notes: formData.get("notes") || undefined,
     };
 
@@ -113,6 +127,7 @@ export function PropertiesPageClient({
             purchaseDate: payload.purchaseDate,
             currentValue: payload.currentValue,
             occupancyStatus: payload.occupancyStatus,
+            estateAgentId: payload.estateAgentId ?? null,
             notes: payload.notes,
           }),
         });
@@ -172,12 +187,14 @@ export function PropertiesPageClient({
     <div className="space-y-4">
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : closeDialog())}>
-          <DialogTrigger>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add property
-            </Button>
-          </DialogTrigger>
+          {isOwner && (
+            <DialogTrigger>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add property
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit property" : "Add property"}</DialogTitle>
@@ -188,7 +205,7 @@ export function PropertiesPageClient({
                   {error}
                 </div>
               )}
-              {!editing && (
+              {!editing && isOwner && (
                 <div className="space-y-2">
                   <Label htmlFor="portfolioId">Portfolio</Label>
                   <Select
@@ -203,6 +220,27 @@ export function PropertiesPageClient({
                       {portfolios.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {isOwner && (
+                <div className="space-y-2">
+                  <Label htmlFor="estateAgentId">Estate Agent</Label>
+                  <Select
+                    value={estateAgentId ?? "none"}
+                    onValueChange={(v) => setEstateAgentId(v === "none" ? null : v)}
+                  >
+                    <SelectTrigger id="estateAgentId" className="h-9 w-full">
+                      <SelectValue placeholder="Select agent (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {estateAgents.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name} {a.company ? `(${a.company})` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -327,6 +365,7 @@ export function PropertiesPageClient({
                 <TableHead>Bedrooms</TableHead>
                 <TableHead>Occupancy</TableHead>
                 <TableHead>Portfolio</TableHead>
+                {isOwner && <TableHead>Estate Agent</TableHead>}
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -340,6 +379,9 @@ export function PropertiesPageClient({
                     {p.occupancyStatus ?? "-"}
                   </TableCell>
                   <TableCell>{p.portfolio?.name ?? "-"}</TableCell>
+                  {isOwner && (
+                    <TableCell>{p.estateAgent?.name ?? "-"}</TableCell>
+                  )}
                   <TableCell>
                     <div className="flex gap-1">
                       <Button
@@ -349,13 +391,15 @@ export function PropertiesPageClient({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDelete(p.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(p.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

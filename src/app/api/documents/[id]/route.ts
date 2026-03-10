@@ -1,31 +1,38 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 
-async function getDocumentForUser(documentId: string, userId: string) {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
-  const propertyIds = (
-    await db.property.findMany({
-      where: { portfolioId: { in: portfolioIds } },
-      select: { id: true },
-    })
-  ).map((p) => p.id);
-  const tenantIds = (
-    await db.tenant.findMany({
-      where: { userId },
-      select: { id: true },
-    })
-  ).map((t) => t.id);
-  const tenancyIds = (
-    await db.tenancy.findMany({
+async function getDocumentForUser(
+  documentId: string,
+  userId: string,
+  role: string
+) {
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  let tenantIds: string[];
+  if (role === "estate_agent") {
+    const tenancies = await db.tenancy.findMany({
       where: { propertyId: { in: propertyIds } },
-      select: { id: true },
-    })
-  ).map((t) => t.id);
+      select: { tenantId: true },
+    });
+    tenantIds = [...new Set(tenancies.map((t) => t.tenantId))];
+  } else {
+    tenantIds = (
+      await db.tenant.findMany({
+        where: { userId },
+        select: { id: true },
+      })
+    ).map((t) => t.id);
+  }
+  const tenancyIds =
+    propertyIds.length > 0
+      ? (
+          await db.tenancy.findMany({
+            where: { propertyId: { in: propertyIds } },
+            select: { id: true },
+          })
+        ).map((t) => t.id)
+      : [];
   const maintenanceIds = (
     await db.maintenanceRequest.findMany({
       where: { propertyId: { in: propertyIds } },
@@ -70,7 +77,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const document = await getDocumentForUser(id, user.id);
+  const document = await getDocumentForUser(id, user.id, user.role);
   if (!document) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
@@ -86,7 +93,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const document = await getDocumentForUser(id, user.id);
+  const document = await getDocumentForUser(id, user.id, user.role);
   if (!document) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }

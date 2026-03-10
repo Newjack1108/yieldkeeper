@@ -302,6 +302,7 @@ export function InspectionsPageClient({
                       name="propertyId"
                       value={propertyId}
                       onValueChange={(v) => setPropertyId(v ?? "")}
+                      items={properties.map((p) => ({ value: p.id, label: p.address }))}
                     >
                       <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
                         <SelectValue placeholder="Select property" />
@@ -321,6 +322,10 @@ export function InspectionsPageClient({
                       name="tenancyId"
                       value={tenancyId}
                       onValueChange={(v) => setTenancyId(v ?? "")}
+                      items={[
+                        { value: "", label: "None" },
+                        ...tenancies.map((t) => ({ value: t.id, label: t.label })),
+                      ]}
                     >
                       <SelectTrigger id="tenancyId" className="h-9 w-full">
                         <SelectValue placeholder="None" />
@@ -343,6 +348,10 @@ export function InspectionsPageClient({
                     name="tenancyId"
                     value={tenancyId}
                     onValueChange={(v) => setTenancyId(v ?? "")}
+                    items={[
+                      { value: "", label: "None" },
+                      ...tenanciesForProperty(editing.propertyId).map((t) => ({ value: t.id, label: t.label })),
+                    ]}
                   >
                     <SelectTrigger id="tenancyId" className="h-9 w-full">
                       <SelectValue placeholder="None" />

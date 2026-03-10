@@ -289,6 +289,7 @@ export function MaintenancePageClient({
                       name="propertyId"
                       value={propertyId}
                       onValueChange={(v) => setPropertyId(v ?? "")}
+                      items={properties.map((p) => ({ value: p.id, label: p.address }))}
                     >
                       <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
                         <SelectValue placeholder="Select property" />
@@ -308,6 +309,10 @@ export function MaintenancePageClient({
                       name="tenancyId"
                       value={tenancyId}
                       onValueChange={(v) => setTenancyId(v ?? "")}
+                      items={[
+                        { value: "", label: "None" },
+                        ...tenancies.map((t) => ({ value: t.id, label: t.label })),
+                      ]}
                     >
                       <SelectTrigger id="tenancyId" className="h-9 w-full">
                         <SelectValue placeholder="None" />
@@ -335,6 +340,10 @@ export function MaintenancePageClient({
                       name="tenancyId"
                       value={tenancyId}
                       onValueChange={(v) => setTenancyId(v ?? "")}
+                      items={[
+                        { value: "", label: "None" },
+                        ...tenanciesForProperty(editing.propertyId).map((t) => ({ value: t.id, label: t.label })),
+                      ]}
                     >
                       <SelectTrigger id="tenancyId" className="h-9 w-full">
                         <SelectValue placeholder="None" />
@@ -357,6 +366,13 @@ export function MaintenancePageClient({
                   name="contractorId"
                   value={contractorId}
                   onValueChange={(v) => setContractorId(v ?? "")}
+                  items={[
+                    { value: "", label: "None" },
+                    ...contractors.map((c) => ({
+                      value: c.id,
+                      label: c.tradeType ? `${c.name} (${c.tradeType})` : c.name,
+                    })),
+                  ]}
                 >
                   <SelectTrigger id="contractorId" className="h-9 w-full">
                     <SelectValue placeholder="None" />

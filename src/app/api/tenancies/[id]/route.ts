@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 
-async function getTenancyForUser(tenancyId: string, userId: string) {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+async function getTenancyForUser(
+  tenancyId: string,
+  userId: string,
+  role: string
+) {
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return null;
   return db.tenancy.findFirst({
     where: {
       id: tenancyId,
-      property: { portfolioId: { in: portfolioIds } },
+      propertyId: { in: propertyIds },
     },
     include: {
       property: { select: { id: true, address: true } },
@@ -32,7 +34,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const tenancy = await getTenancyForUser(id, user.id);
+  const tenancy = await getTenancyForUser(id, user.id, user.role);
   if (!tenancy) {
     return NextResponse.json({ error: "Tenancy not found" }, { status: 404 });
   }

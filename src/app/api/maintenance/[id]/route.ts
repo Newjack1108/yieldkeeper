@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -27,17 +28,15 @@ const updateSchema = z.object({
 
 async function getMaintenanceForUser(
   maintenanceId: string,
-  userId: string
+  userId: string,
+  role: string
 ) {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return null;
   return db.maintenanceRequest.findFirst({
     where: {
       id: maintenanceId,
-      property: { portfolioId: { in: portfolioIds } },
+      propertyId: { in: propertyIds },
     },
     include: {
       property: { select: { id: true, address: true } },
@@ -61,7 +60,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const maintenance = await getMaintenanceForUser(id, user.id);
+  const maintenance = await getMaintenanceForUser(id, user.id, user.role);
   if (!maintenance) {
     return NextResponse.json({ error: "Maintenance request not found" }, {
       status: 404,
@@ -79,7 +78,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const maintenance = await getMaintenanceForUser(id, user.id);
+  const maintenance = await getMaintenanceForUser(id, user.id, user.role);
   if (!maintenance) {
     return NextResponse.json({ error: "Maintenance request not found" }, {
       status: 404,
@@ -180,7 +179,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const maintenance = await getMaintenanceForUser(id, user.id);
+  const maintenance = await getMaintenanceForUser(id, user.id, user.role);
   if (!maintenance) {
     return NextResponse.json({ error: "Maintenance request not found" }, {
       status: 404,

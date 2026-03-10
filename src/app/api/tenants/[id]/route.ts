@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -11,9 +12,28 @@ const updateSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-async function getTenantForUser(tenantId: string, userId: string) {
-  return db.tenant.findFirst({
-    where: { id: tenantId, userId },
+async function getTenantForUser(
+  tenantId: string,
+  userId: string,
+  role: string
+) {
+  if (role === "portfolio_owner" || role === "admin") {
+    return db.tenant.findFirst({
+      where: { id: tenantId, userId },
+    });
+  }
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return null;
+  const tenancy = await db.tenancy.findFirst({
+    where: {
+      tenantId,
+      propertyId: { in: propertyIds },
+    },
+    select: { id: true },
+  });
+  if (!tenancy) return null;
+  return db.tenant.findUnique({
+    where: { id: tenantId },
   });
 }
 
@@ -26,7 +46,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const tenant = await getTenantForUser(id, user.id);
+  const tenant = await getTenantForUser(id, user.id, user.role);
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
@@ -42,7 +62,7 @@ export async function PUT(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const tenant = await getTenantForUser(id, user.id);
+  const tenant = await getTenantForUser(id, user.id, user.role);
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
@@ -78,8 +98,11 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { id } = await params;
-  const tenant = await getTenantForUser(id, user.id);
+  const tenant = await getTenantForUser(id, user.id, user.role);
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }

@@ -25,6 +25,9 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const portfolioIds = await getPortfolioIdsForUser(user.id);
   const { searchParams } = new URL(request.url);
   const propertyIdFilter = searchParams.get("propertyId");
@@ -61,6 +64,9 @@ export async function POST(request: Request) {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.role === "estate_agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const portfolioIds = await getPortfolioIdsForUser(user.id);
   const body = await request.json();

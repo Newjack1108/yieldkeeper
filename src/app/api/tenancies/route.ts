@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 import { startOfMonth, addMonths } from "date-fns";
 
@@ -18,22 +19,15 @@ const createSchema = z.object({
   generateSchedules: z.boolean().default(true),
 });
 
-async function getPortfolioIdsForUser(userId: string): Promise<string[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  return portfolios.map((p) => p.id);
-}
-
 export async function GET() {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  if (propertyIds.length === 0) return NextResponse.json([]);
   const tenancies = await db.tenancy.findMany({
-    where: { property: { portfolioId: { in: portfolioIds } } },
+    where: { propertyId: { in: propertyIds } },
     include: {
       property: { select: { id: true, address: true } },
       tenant: { select: { id: true, name: true, email: true } },
@@ -49,7 +43,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -60,22 +54,35 @@ export async function POST(request: Request) {
   }
   const data = parsed.data;
 
-  const property = await db.property.findFirst({
-    where: {
-      id: data.propertyId,
-      portfolioId: { in: portfolioIds },
-    },
-  });
-  if (!property) {
+  if (!propertyIds.includes(data.propertyId)) {
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
 
   const tenant = await db.tenant.findFirst({
-    where: { id: data.tenantId, userId: user.id },
+    where: { id: data.tenantId },
   });
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
+  if (user.role === "portfolio_owner" || user.role === "admin") {
+    if (tenant.userId !== user.id) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+  } else {
+    const tenantTenancy = await db.tenancy.findFirst({
+      where: {
+        tenantId: data.tenantId,
+        propertyId: { in: propertyIds },
+      },
+    });
+    if (!tenantTenancy) {
+      return NextResponse.json({ error: "Tenant not found or access denied" }, { status: 404 });
+    }
+  }
+
+  const property = await db.property.findFirst({
+    where: { id: data.propertyId },
+  });
 
   const tenancy = await db.tenancy.create({
     data: {

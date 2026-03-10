@@ -221,6 +221,7 @@ export function RentPageClient({
                   name="propertyId"
                   value={addPropertyId}
                   onValueChange={(v) => setAddPropertyId(v ?? "")}
+                  items={properties.map((p) => ({ value: p.id, label: p.address }))}
                 >
                   <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
                     <SelectValue placeholder="Select property" />
@@ -240,6 +241,7 @@ export function RentPageClient({
                   name="tenantId"
                   value={addTenantId}
                   onValueChange={(v) => setAddTenantId(v ?? "")}
+                  items={tenants.map((t) => ({ value: t.id, label: t.name }))}
                 >
                   <SelectTrigger id="tenantId" className="h-9 w-full" disabled={tenants.length === 0}>
                     <SelectValue placeholder="Select tenant" />
@@ -351,6 +353,10 @@ export function RentPageClient({
                   name="tenancyId"
                   value={paymentTenancyId}
                   onValueChange={(v) => setPaymentTenancyId(v ?? "")}
+                  items={tenancies.map((t) => ({
+                    value: t.id,
+                    label: `${t.propertyAddress} — ${t.tenantName}`,
+                  }))}
                 >
                   <SelectTrigger id="tenancyId" className="h-9 w-full">
                     <SelectValue placeholder="Select tenancy" />
@@ -370,6 +376,17 @@ export function RentPageClient({
                   name="rentScheduleId"
                   value={paymentRentScheduleId}
                   onValueChange={(v) => setPaymentRentScheduleId(v ?? "")}
+                  items={[
+                    { value: "", label: "— General payment —" },
+                    ...tenancies.flatMap((t) =>
+                      t.schedules
+                        .filter((s) => s.status !== "paid")
+                        .map((s) => ({
+                          value: s.id,
+                          label: `${t.propertyAddress} — ${s.dueDate} (£${s.amountDue}) — ${s.status}`,
+                        }))
+                    ),
+                  ]}
                 >
                   <SelectTrigger id="rentScheduleId" className="h-9 w-full">
                     <SelectValue placeholder="— General payment —" />

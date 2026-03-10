@@ -15,6 +15,7 @@ import {
   FileText,
   MessageSquare,
   LogOut,
+  UserCog,
 } from "lucide-react";
 
 import {
@@ -37,13 +38,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+const ownerNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/properties", label: "Properties", icon: Building2 },
   { href: "/dashboard/tenants", label: "Tenants", icon: Users },
   { href: "/dashboard/rent", label: "Rent", icon: PoundSterling },
   { href: "/dashboard/mortgages", label: "Mortgages", icon: Home },
   { href: "/dashboard/insurance", label: "Insurance", icon: Shield },
+  { href: "/dashboard/inspections", label: "Inspections", icon: ClipboardCheck },
+  { href: "/dashboard/maintenance", label: "Maintenance", icon: Wrench },
+  { href: "/dashboard/compliance", label: "Compliance", icon: ShieldCheck },
+  { href: "/dashboard/documents", label: "Documents", icon: FileText },
+  { href: "/dashboard/sms", label: "SMS", icon: MessageSquare },
+  { href: "/dashboard/estate-agents", label: "Estate Agents", icon: UserCog },
+];
+
+const agentNavItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/properties", label: "Properties", icon: Building2 },
+  { href: "/dashboard/tenants", label: "Tenants", icon: Users },
+  { href: "/dashboard/rent", label: "Rent", icon: PoundSterling },
   { href: "/dashboard/inspections", label: "Inspections", icon: ClipboardCheck },
   { href: "/dashboard/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/dashboard/compliance", label: "Compliance", icon: ShieldCheck },
@@ -56,6 +70,8 @@ type User = { id: string; email: string; name: string | null; role: string };
 export function AppSidebar({ user }: { user: User }) {
   const pathname = usePathname();
   const router = useRouter();
+  const navItems =
+    user.role === "estate_agent" ? agentNavItems : ownerNavItems;
 
   async function handleSignOut() {
     await fetch("/api/auth/sign-out", { method: "POST" });

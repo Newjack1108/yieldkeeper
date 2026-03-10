@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const DOCUMENT_TYPES = [
@@ -26,38 +27,36 @@ const createSchema = z.object({
   size: z.coerce.number().int().min(0).optional().nullable(),
 });
 
-async function getPortfolioIdsForUser(userId: string): Promise<string[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  return portfolios.map((p) => p.id);
-}
-
 export async function GET(request: Request) {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
-  const propertyIds = (
-    await db.property.findMany({
-      where: { portfolioId: { in: portfolioIds } },
-      select: { id: true },
-    })
-  ).map((p) => p.id);
-  const tenantIds = (
-    await db.tenant.findMany({
-      where: { userId: user.id },
-      select: { id: true },
-    })
-  ).map((t) => t.id);
-  const tenancyIds = (
-    await db.tenancy.findMany({
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  let tenantIds: string[];
+  if (user.role === "estate_agent") {
+    const tenancies = await db.tenancy.findMany({
       where: { propertyId: { in: propertyIds } },
-      select: { id: true },
-    })
-  ).map((t) => t.id);
+      select: { tenantId: true },
+    });
+    tenantIds = [...new Set(tenancies.map((t) => t.tenantId))];
+  } else {
+    tenantIds = (
+      await db.tenant.findMany({
+        where: { userId: user.id },
+        select: { id: true },
+      })
+    ).map((t) => t.id);
+  }
+  const tenancyIds =
+    propertyIds.length > 0
+      ? (
+          await db.tenancy.findMany({
+            where: { propertyId: { in: propertyIds } },
+            select: { id: true },
+          })
+        ).map((t) => t.id)
+      : [];
   const maintenanceIds = (
     await db.maintenanceRequest.findMany({
       where: { propertyId: { in: propertyIds } },
@@ -118,19 +117,22 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
-  const propertyIds = (
-    await db.property.findMany({
-      where: { portfolioId: { in: portfolioIds } },
-      select: { id: true },
-    })
-  ).map((p) => p.id);
-  const tenantIds = (
-    await db.tenant.findMany({
-      where: { userId: user.id },
-      select: { id: true },
-    })
-  ).map((t) => t.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  let tenantIds: string[];
+  if (user.role === "estate_agent") {
+    const tenancies = await db.tenancy.findMany({
+      where: { propertyId: { in: propertyIds } },
+      select: { tenantId: true },
+    });
+    tenantIds = [...new Set(tenancies.map((t) => t.tenantId))];
+  } else {
+    tenantIds = (
+      await db.tenant.findMany({
+        where: { userId: user.id },
+        select: { id: true },
+      })
+    ).map((t) => t.id);
+  }
 
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
     const tenancy = await db.tenancy.findFirst({
       where: {
         id: data.tenancyId,
-        property: { portfolioId: { in: portfolioIds } },
+        ...(propertyIds.length > 0 ? { propertyId: { in: propertyIds } } : {}),
       },
     });
     if (!tenancy) {
@@ -163,7 +165,7 @@ export async function POST(request: Request) {
     const maint = await db.maintenanceRequest.findFirst({
       where: {
         id: data.maintenanceRequestId,
-        property: { portfolioId: { in: portfolioIds } },
+        ...(propertyIds.length > 0 ? { propertyId: { in: propertyIds } } : {}),
       },
     });
     if (!maint) {
@@ -174,7 +176,7 @@ export async function POST(request: Request) {
     const comp = await db.complianceRecord.findFirst({
       where: {
         id: data.complianceRecordId,
-        property: { portfolioId: { in: portfolioIds } },
+        ...(propertyIds.length > 0 ? { propertyId: { in: propertyIds } } : {}),
       },
     });
     if (!comp) {

@@ -191,7 +191,14 @@ export function SmsPageClient({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="tenantId">Tenant</Label>
-              <Select value={tenantId} onValueChange={(v) => setTenantId(v ?? "")}>
+              <Select
+                value={tenantId}
+                onValueChange={(v) => setTenantId(v ?? "")}
+                items={tenants.map((t) => ({
+                  value: t.id,
+                  label: `${t.name} (${t.phone ?? ""})`,
+                }))}
+              >
                 <SelectTrigger id="tenantId" className="h-9 w-full">
                   <SelectValue placeholder="Select tenant" />
                 </SelectTrigger>
@@ -217,6 +224,13 @@ export function SmsPageClient({
                   setTemplateId(v ?? "");
                   if (!v) setCustomBody("");
                 }}
+                items={[
+                  { value: "", label: "Custom message" },
+                  ...templates.map((t) => ({
+                    value: t.id,
+                    label: MESSAGE_TYPE_LABELS[t.type] ?? t.type,
+                  })),
+                ]}
               >
                 <SelectTrigger id="templateId" className="h-9 w-full">
                   <SelectValue placeholder="Custom message" />

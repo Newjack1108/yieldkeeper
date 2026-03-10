@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -16,17 +17,15 @@ const updateSchema = z.object({
 
 async function getInspectionForUser(
   inspectionId: string,
-  userId: string
+  userId: string,
+  role: string
 ) {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return null;
   return db.inspection.findFirst({
     where: {
       id: inspectionId,
-      property: { portfolioId: { in: portfolioIds } },
+      propertyId: { in: propertyIds },
     },
     include: {
       property: { select: { id: true, address: true } },
@@ -51,7 +50,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const inspection = await getInspectionForUser(id, user.id);
+  const inspection = await getInspectionForUser(id, user.id, user.role);
   if (!inspection) {
     return NextResponse.json({ error: "Inspection not found" }, {
       status: 404,
@@ -69,7 +68,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const inspection = await getInspectionForUser(id, user.id);
+  const inspection = await getInspectionForUser(id, user.id, user.role);
   if (!inspection) {
     return NextResponse.json({ error: "Inspection not found" }, {
       status: 404,
@@ -86,16 +85,10 @@ export async function PATCH(
   const data = parsed.data;
 
   if (data.tenancyId !== undefined && data.tenancyId !== null) {
-    const portfolios = await db.portfolio.findMany({
-      where: { userId: user.id },
-      select: { id: true },
-    });
-    const portfolioIds = portfolios.map((p) => p.id);
     const tenancy = await db.tenancy.findFirst({
       where: {
         id: data.tenancyId,
         propertyId: inspection.propertyId,
-        property: { portfolioId: { in: portfolioIds } },
       },
     });
     if (!tenancy) {
@@ -159,7 +152,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const inspection = await getInspectionForUser(id, user.id);
+  const inspection = await getInspectionForUser(id, user.id, user.role);
   if (!inspection) {
     return NextResponse.json({ error: "Inspection not found" }, {
       status: 404,

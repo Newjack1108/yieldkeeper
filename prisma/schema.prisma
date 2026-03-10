@@ -15,7 +15,7 @@ model User {
   email        String    @unique
   name         String?
   passwordHash String?
-  role         String    @default("portfolio_owner") // admin, portfolio_owner, manager
+  role         String    @default("portfolio_owner") // admin, portfolio_owner, manager, estate_agent
   createdAt    DateTime  @default(now())
 
   sessions           Session[]
@@ -23,6 +23,8 @@ model User {
   tenants            Tenant[]
   contractors        Contractor[]
   tenantActivityNotes TenantActivityNote[]
+  estateAgent           EstateAgent?
+  estateAgentsCreated   EstateAgent[] @relation("EstateAgentCreatedBy")
 }
 
 // Lucia v3 session
@@ -46,6 +48,26 @@ model Portfolio {
   properties Property[]
 }
 
+model EstateAgent {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  createdByUserId  String
+  name             String
+  company          String?
+  email            String
+  phone            String?
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdBy        User      @relation("EstateAgentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  properties       Property[]
+
+  @@index([userId])
+  @@index([createdByUserId])
+}
+
 model Property {
   id              String    @id @default(cuid())
   portfolioId     String
@@ -57,10 +79,12 @@ model Property {
   bedrooms        Int?
   notes           String?   @db.Text
   occupancyStatus String?   @default("vacant") // occupied, vacant, partial
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  estateAgentId    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   portfolio         Portfolio           @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  estateAgent       EstateAgent?        @relation(fields: [estateAgentId], references: [id], onDelete: SetNull)
   units             Unit[]
   mortgages         Mortgage[]
   insurancePolicies InsurancePolicy[]
@@ -72,6 +96,7 @@ model Property {
   documents         Document[]
 
   @@index([portfolioId])
+  @@index([estateAgentId])
 }
 
 model Unit {

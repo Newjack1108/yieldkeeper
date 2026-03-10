@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -11,17 +12,15 @@ const createSchema = z.object({
 
 async function getInspectionForUser(
   inspectionId: string,
-  userId: string
+  userId: string,
+  role: string
 ) {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return null;
   return db.inspection.findFirst({
     where: {
       id: inspectionId,
-      property: { portfolioId: { in: portfolioIds } },
+      propertyId: { in: propertyIds },
     },
   });
 }
@@ -35,7 +34,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const inspection = await getInspectionForUser(id, user.id);
+  const inspection = await getInspectionForUser(id, user.id, user.role);
   if (!inspection) {
     return NextResponse.json({ error: "Inspection not found" }, {
       status: 404,
@@ -57,7 +56,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const inspection = await getInspectionForUser(id, user.id);
+  const inspection = await getInspectionForUser(id, user.id, user.role);
   if (!inspection) {
     return NextResponse.json({ error: "Inspection not found" }, {
       status: 404,

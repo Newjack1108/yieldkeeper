@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { syncOverdueSchedules } from "@/lib/rent";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { startOfMonth, endOfMonth, subMonths, addDays } from "date-fns";
 
 const CHART_COLORS = [
@@ -63,15 +64,11 @@ function toNum(d: { toNumber?: () => number } | null | undefined): number {
 }
 
 export async function getDashboardSummary(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<DashboardSummary> {
-  await syncOverdueSchedules(userId);
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
-  const propertyIds = portfolios.flatMap((p) => p.properties.map((prop) => prop.id));
+  await syncOverdueSchedules(userId, role);
+  const propertyIds = await getPropertyIdsForUser(userId, role);
 
   if (propertyIds.length === 0) {
     return {
@@ -89,16 +86,16 @@ export async function getDashboardSummary(
 
   const [propertyCount, occupiedCount, activeTenancies, overdueRent, maintenanceOpen, complianceDueSoon, mortgagesThisMonth, insuranceThisMonth, monthlyExpenses] =
     await Promise.all([
-      db.property.count({ where: { portfolioId: { in: portfolioIds } } }),
+      db.property.count({ where: { id: { in: propertyIds } } }),
       db.property.count({
         where: {
-          portfolioId: { in: portfolioIds },
+          id: { in: propertyIds },
           occupancyStatus: "occupied",
         },
       }),
       db.tenancy.findMany({
         where: {
-          property: { portfolioId: { in: portfolioIds } },
+          propertyId: { in: propertyIds },
           status: "active",
         },
         include: { property: true },
@@ -106,7 +103,7 @@ export async function getDashboardSummary(
       db.rentSchedule.aggregate({
         where: {
           status: "overdue",
-          tenancy: { property: { portfolioId: { in: portfolioIds } } },
+          tenancy: { propertyId: { in: propertyIds } },
         },
         _sum: { amountDue: true },
       }),
@@ -154,18 +151,19 @@ export async function getDashboardSummary(
   const thisMonthStart = startOfMonth(now);
   const thisMonthEnd = endOfMonth(now);
   let mortgageDue = 0;
-  for (const m of mortgagesThisMonth) {
-    const due = m.nextPaymentDate;
-    if (due && due >= thisMonthStart && due <= thisMonthEnd) {
-      mortgageDue += toNum(m.paymentAmount);
-    }
-  }
-
   let insuranceRenewal = 0;
-  for (const i of insuranceThisMonth) {
-    const renew = i.renewalDate;
-    if (renew && renew >= thisMonthStart && renew <= thisMonthEnd) {
-      insuranceRenewal += toNum(i.premium);
+  if (role !== "estate_agent") {
+    for (const m of mortgagesThisMonth) {
+      const due = m.nextPaymentDate;
+      if (due && due >= thisMonthStart && due <= thisMonthEnd) {
+        mortgageDue += toNum(m.paymentAmount);
+      }
+    }
+    for (const i of insuranceThisMonth) {
+      const renew = i.renewalDate;
+      if (renew && renew >= thisMonthStart && renew <= thisMonthEnd) {
+        insuranceRenewal += toNum(i.premium);
+      }
     }
   }
 
@@ -190,15 +188,12 @@ export async function getDashboardSummary(
 }
 
 export async function getMonthlyIncome(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<MonthlyIncomeRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  if (portfolios.length === 0) return [];
-
-  const portfolioIds = portfolios.map((p) => p.id);
+  if (role === "estate_agent") return [];
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return [];
   const months: MonthlyIncomeRow[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = subMonths(new Date(), i);
@@ -206,7 +201,7 @@ export async function getMonthlyIncome(
     const monthEnd = endOfMonth(d);
     const paid = await db.rentPayment.aggregate({
       where: {
-        tenancy: { property: { portfolioId: { in: portfolioIds } } },
+        tenancy: { propertyId: { in: propertyIds } },
         paidDate: { gte: monthStart, lte: monthEnd },
       },
       _sum: { amount: true },
@@ -220,7 +215,7 @@ export async function getMonthlyIncome(
   if (months.every((m) => m.income === 0)) {
     const activeTenancies = await db.tenancy.findMany({
       where: {
-        property: { portfolioId: { in: portfolioIds } },
+        propertyId: { in: propertyIds },
         status: "active",
       },
     });
@@ -236,13 +231,11 @@ export async function getMonthlyIncome(
 }
 
 export async function getExpenseBreakdown(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<ExpenseBreakdownRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: { select: { id: true } } },
-  });
-  const propertyIds = portfolios.flatMap((p) => p.properties.map((prop) => prop.id));
+  if (role === "estate_agent") return [];
+  const propertyIds = await getPropertyIdsForUser(userId, role);
   if (propertyIds.length === 0) return [];
 
   const now = new Date();
@@ -316,19 +309,19 @@ export async function getExpenseBreakdown(
 }
 
 export async function getUpcomingPayments(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<UpcomingPaymentRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: true },
+  if (role === "estate_agent") return [];
+  const propertyIds = await getPropertyIdsForUser(userId, role);
+  if (propertyIds.length === 0) return [];
+  const properties = await db.property.findMany({
+    where: { id: { in: propertyIds } },
+    select: { id: true, address: true },
   });
   const propertyMap = new Map(
-    portfolios.flatMap((p) =>
-      p.properties.map((prop) => [prop.id, { address: prop.address }] as const)
-    )
+    properties.map((prop) => [prop.id, { address: prop.address }] as const)
   );
-  const propertyIds = Array.from(propertyMap.keys());
-  if (propertyIds.length === 0) return [];
 
   const now = new Date();
   const in90Days = addDays(now, 90);
@@ -375,13 +368,10 @@ export async function getUpcomingPayments(
 }
 
 export async function getMaintenanceAlerts(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<MaintenanceAlertRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: true },
-  });
-  const propertyIds = portfolios.flatMap((p) => p.properties.map((prop) => prop.id));
+  const propertyIds = await getPropertyIdsForUser(userId, role);
   if (propertyIds.length === 0) return [];
 
   const items = await db.maintenanceRequest.findMany({
@@ -403,13 +393,10 @@ export async function getMaintenanceAlerts(
 }
 
 export async function getComplianceAlerts(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<ComplianceAlertRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: true },
-  });
-  const propertyIds = portfolios.flatMap((p) => p.properties.map((prop) => prop.id));
+  const propertyIds = await getPropertyIdsForUser(userId, role);
   if (propertyIds.length === 0) return [];
 
   const items = await db.complianceRecord.findMany({
@@ -431,15 +418,10 @@ export async function getComplianceAlerts(
 }
 
 export async function getInspectionAlerts(
-  userId: string
+  userId: string,
+  role: string = "portfolio_owner"
 ): Promise<InspectionAlertRow[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    include: { properties: true },
-  });
-  const propertyIds = portfolios.flatMap((p) =>
-    p.properties.map((prop) => prop.id)
-  );
+  const propertyIds = await getPropertyIdsForUser(userId, role);
   if (propertyIds.length === 0) return [];
 
   const now = new Date();

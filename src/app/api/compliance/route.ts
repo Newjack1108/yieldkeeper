@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const COMPLIANCE_TYPES = [
@@ -23,23 +24,16 @@ const createSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-async function getPortfolioIdsForUser(userId: string): Promise<string[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  return portfolios.map((p) => p.id);
-}
-
 export async function GET() {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  if (propertyIds.length === 0) return NextResponse.json([]);
 
   const records = await db.complianceRecord.findMany({
-    where: { property: { portfolioId: { in: portfolioIds } } },
+    where: { propertyId: { in: propertyIds } },
     include: {
       property: { select: { id: true, address: true } },
     },
@@ -53,7 +47,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -64,13 +58,7 @@ export async function POST(request: Request) {
   }
   const data = parsed.data;
 
-  const property = await db.property.findFirst({
-    where: {
-      id: data.propertyId,
-      portfolioId: { in: portfolioIds },
-    },
-  });
-  if (!property) {
+  if (!propertyIds.includes(data.propertyId)) {
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
 

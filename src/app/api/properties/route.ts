@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getAgentPropertyIds } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -12,6 +13,7 @@ const createSchema = z.object({
   purchaseDate: z.string().optional(),
   currentValue: z.coerce.number().min(0).optional(),
   occupancyStatus: z.enum(["occupied", "vacant", "partial"]).optional(),
+  estateAgentId: z.string().optional().nullable(),
   notes: z.string().optional(),
 });
 
@@ -20,6 +22,25 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (user.role === "estate_agent") {
+    const propertyIds = await getAgentPropertyIds(user.id);
+    if (propertyIds.length === 0) {
+      return NextResponse.json([]);
+    }
+    const properties = await db.property.findMany({
+      where: { id: { in: propertyIds } },
+      include: { portfolio: { select: { name: true } } },
+      orderBy: { address: "asc" },
+    });
+    return NextResponse.json(
+      properties.map((p) => ({
+        ...p,
+        portfolioName: p.portfolio.name,
+      }))
+    );
+  }
+
   const portfolios = await db.portfolio.findMany({
     where: { userId: user.id },
     include: {
@@ -42,6 +63,9 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "portfolio_owner" && user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -50,7 +74,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { portfolioId, ...data } = parsed.data;
+  const { portfolioId, estateAgentId, ...data } = parsed.data;
   const portfolio = await db.portfolio.findFirst({
     where: { id: portfolioId, userId: user.id },
   });
@@ -59,6 +83,17 @@ export async function POST(request: Request) {
       { error: "Portfolio not found or access denied" },
       { status: 404 }
     );
+  }
+  if (estateAgentId) {
+    const agent = await db.estateAgent.findFirst({
+      where: { id: estateAgentId, createdByUserId: user.id },
+    });
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Estate agent not found or access denied" },
+        { status: 400 }
+      );
+    }
   }
   const property = await db.property.create({
     data: {
@@ -70,6 +105,7 @@ export async function POST(request: Request) {
       purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
       currentValue: data.currentValue ?? null,
       occupancyStatus: data.occupancyStatus ?? "vacant",
+      estateAgentId: estateAgentId ?? null,
       notes: data.notes ?? null,
     },
   });

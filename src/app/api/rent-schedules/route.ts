@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { canAccessTenancy } from "@/lib/estate-agent";
+import { syncOverdueSchedules } from "@/lib/rent";
 import { z } from "zod";
 import { startOfMonth, addMonths } from "date-fns";
-import { syncOverdueSchedules } from "@/lib/rent";
 
 const createSchema = z.object({
   tenancyId: z.string().min(1),
@@ -11,21 +12,6 @@ const createSchema = z.object({
   amountDue: z.number().positive(),
   generateMonths: z.number().min(1).max(24).optional(),
 });
-
-async function canAccessTenancy(tenancyId: string, userId: string): Promise<boolean> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
-  const tenancy = await db.tenancy.findFirst({
-    where: {
-      id: tenancyId,
-      property: { portfolioId: { in: portfolioIds } },
-    },
-  });
-  return !!tenancy;
-}
 
 export async function POST(request: Request) {
   const { user } = await validateRequest();
@@ -42,7 +28,7 @@ export async function POST(request: Request) {
   }
   const data = parsed.data;
 
-  const hasAccess = await canAccessTenancy(data.tenancyId, user.id);
+  const hasAccess = await canAccessTenancy(data.tenancyId, user.id, user.role);
   if (!hasAccess) {
     return NextResponse.json({ error: "Tenancy not found" }, { status: 404 });
   }
@@ -92,6 +78,6 @@ export async function POST(request: Request) {
     );
   }
 
-  await syncOverdueSchedules(user.id);
+  await syncOverdueSchedules(user.id, user.role);
   return NextResponse.json({ success: true });
 }

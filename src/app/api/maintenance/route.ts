@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -26,28 +27,21 @@ const createSchema = z.object({
   invoiceUrl: z.string().optional().nullable(),
 });
 
-async function getPortfolioIdsForUser(userId: string): Promise<string[]> {
-  const portfolios = await db.portfolio.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  return portfolios.map((p) => p.id);
-}
-
 export async function GET(request: Request) {
   const { user } = await validateRequest();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  if (propertyIds.length === 0) return NextResponse.json([]);
   const { searchParams } = new URL(request.url);
   const statusFilter = searchParams.get("status");
 
   const where: {
-    property: { portfolioId: { in: string[] } };
+    propertyId: { in: string[] };
     status?: { not?: string; equals?: string };
   } = {
-    property: { portfolioId: { in: portfolioIds } },
+    propertyId: { in: propertyIds },
   };
   if (statusFilter === "open") {
     where.status = { not: "completed" };
@@ -77,7 +71,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const portfolioIds = await getPortfolioIdsForUser(user.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -88,13 +82,7 @@ export async function POST(request: Request) {
   }
   const data = parsed.data;
 
-  const property = await db.property.findFirst({
-    where: {
-      id: data.propertyId,
-      portfolioId: { in: portfolioIds },
-    },
-  });
-  if (!property) {
+  if (!propertyIds.includes(data.propertyId)) {
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
 
@@ -103,7 +91,6 @@ export async function POST(request: Request) {
       where: {
         id: data.tenancyId,
         propertyId: data.propertyId,
-        property: { portfolioId: { in: portfolioIds } },
       },
     });
     if (!tenancy) {
@@ -115,8 +102,16 @@ export async function POST(request: Request) {
   }
 
   if (data.contractorId) {
+    const property = await db.property.findUnique({
+      where: { id: data.propertyId },
+      include: { portfolio: { select: { userId: true } } },
+    });
+    const ownerId = property?.portfolio?.userId;
     const contractor = await db.contractor.findFirst({
-      where: { id: data.contractorId, userId: user.id },
+      where: {
+        id: data.contractorId,
+        ...(ownerId ? { userId: ownerId } : {}),
+      },
     });
     if (!contractor) {
       return NextResponse.json(
