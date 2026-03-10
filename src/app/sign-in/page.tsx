@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,8 +51,15 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <Image
+        src="/logo.png"
+        alt="YieldKeeper"
+        width={200}
+        height={57}
+        className="mb-6 h-auto w-[200px]"
+      />
+      <Card className="w-full max-w-sm border-white/10 bg-card">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>
@@ -92,7 +100,7 @@ export default function SignInPage() {
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="underline hover:text-foreground">
+            <Link href="/sign-up" className="text-primary underline hover:text-primary/90">
               Sign up
             </Link>
           </p>
