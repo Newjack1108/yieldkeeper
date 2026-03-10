@@ -18,10 +18,11 @@ model User {
   role         String    @default("portfolio_owner") // admin, portfolio_owner, manager
   createdAt    DateTime  @default(now())
 
-  sessions    Session[]
-  portfolios  Portfolio[]
-  tenants     Tenant[]
-  contractors Contractor[]
+  sessions           Session[]
+  portfolios         Portfolio[]
+  tenants            Tenant[]
+  contractors        Contractor[]
+  tenantActivityNotes TenantActivityNote[]
 }
 
 // Lucia v3 session
@@ -128,10 +129,11 @@ model Tenant {
   notes            String?  @db.Text
   createdAt        DateTime @default(now())
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenancies    Tenancy[]
-  smsLogs      SmsLog[]
-  documents    Document[]
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenancies     Tenancy[]
+  smsLogs       SmsLog[]
+  documents     Document[]
+  activityNotes TenantActivityNote[]
 
   @@index([userId])
 }
@@ -377,4 +379,18 @@ model SmsTemplate {
   type     String  @unique
   content  String  @db.Text
   isActive Boolean @default(true)
+}
+
+model TenantActivityNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  content   String   @db.Text
+  type      String?  // call, meeting, note, email
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }

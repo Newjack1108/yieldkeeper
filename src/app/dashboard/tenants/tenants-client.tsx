@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -220,11 +221,23 @@ export function TenantsPageClient({
             <TableBody>
               {tenants.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell className="font-medium">{t.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/dashboard/tenants/${t.id}`}
+                      className="hover:underline text-primary"
+                    >
+                      {t.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>{t.email ?? "-"}</TableCell>
                   <TableCell>{t.phone ?? "-"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Link href={`/dashboard/tenants/${t.id}`}>
+                        <Button variant="ghost" size="icon-sm" type="button">
+                          <User className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         variant="ghost"
                         size="icon-sm"
