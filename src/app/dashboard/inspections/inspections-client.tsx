@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -49,7 +49,7 @@ type InspectionRow = {
   propertyId: string;
   property: { id: string; address: string };
   tenancyId: string | null;
-  tenancy: { id: string; tenant: { id: string; name: string } } | null;
+  tenancy: { id: string; tenant: { id: string; name: string; phone?: string | null } } | null;
   type: string;
   scheduledDate: string | null;
   completedDate: string | null;
@@ -57,6 +57,8 @@ type InspectionRow = {
   nextDueDate: string | null;
   overallRating: number | null;
   status: string;
+  preChecklistToken?: string | null;
+  preChecklist?: { id: string; completedAt: string } | null;
   items: InspectionItem[];
   actions: InspectionAction[];
 };
@@ -86,6 +88,7 @@ export function InspectionsPageClient({
   const [addActionInspectionId, setAddActionInspectionId] = useState<string | null>(null);
   const [addItemLoading, setAddItemLoading] = useState(false);
   const [addActionLoading, setAddActionLoading] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const [propertyId, setPropertyId] = useState("");
   const [tenancyId, setTenancyId] = useState("");
@@ -124,6 +127,21 @@ export function InspectionsPageClient({
 
   const tenanciesForProperty = (propertyId: string) =>
     tenancies.filter((t) => t.propertyId === propertyId);
+
+  function formatStatus(status: string) {
+    if (status === "pending_prechecklist") return "Pending pre-checklist";
+    if (!status) return "—";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  async function handleCopyPreChecklistLink(inspection: InspectionRow) {
+    const token = inspection.preChecklistToken;
+    if (!token) return;
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/checklist/pre/${token}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedToken(inspection.id);
+    setTimeout(() => setCopiedToken(null), 2000);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -447,6 +465,7 @@ export function InspectionsPageClient({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="pending_prechecklist">Pending pre-checklist</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
@@ -499,7 +518,7 @@ export function InspectionsPageClient({
                     </TableCell>
                     <TableCell className="font-medium">{i.property.address}</TableCell>
                     <TableCell className="capitalize">{i.type}</TableCell>
-                    <TableCell className="capitalize">{i.status}</TableCell>
+                    <TableCell>{formatStatus(i.status ?? "")}</TableCell>
                     <TableCell>{i.scheduledDate ?? "—"}</TableCell>
                     <TableCell>{i.overallRating ?? "—"}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -525,6 +544,36 @@ export function InspectionsPageClient({
                     <TableRow key={`${i.id}-expanded`}>
                       <TableCell colSpan={7} className="bg-muted/30 p-4">
                         <div className="space-y-4">
+                          {i.status === "pending_prechecklist" && i.preChecklistToken && !i.preChecklist && (
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                              <p className="mb-2 text-sm font-medium">Pre-inspection checklist required</p>
+                              <p className="mb-3 text-sm text-muted-foreground">
+                                Send this link to the tenant to complete the pre-checklist before the inspection.
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyPreChecklistLink(i)}
+                              >
+                                {copiedToken === i.id ? (
+                                  <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy pre-checklist link
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                          {i.preChecklist && (
+                            <p className="text-sm text-muted-foreground">
+                              Pre-checklist completed {new Date(i.preChecklist.completedAt).toLocaleDateString()}
+                            </p>
+                          )}
                           <div>
                             <div className="mb-2 flex items-center justify-between">
                               <p className="text-sm font-medium">Rooms / areas</p>

@@ -260,18 +260,36 @@ model Tenancy {
   status         String    @default("active") // active, ending_soon, expired, vacant
   notes          String?   @db.Text
 
-  property       Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  unit          Unit?           @relation(fields: [unitId], references: [id])
-  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  rentSchedules RentSchedule[]
-  rentPayments  RentPayment[]
-  inspections   Inspection[]
-  maintenanceItems MaintenanceRequest[]
-  occupants     TenancyOccupant[]
+  property           Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unit               Unit?                 @relation(fields: [unitId], references: [id])
+  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rentSchedules      RentSchedule[]
+  rentPayments       RentPayment[]
+  inspections        Inspection[]
+  maintenanceItems   MaintenanceRequest[]
+  occupants          TenancyOccupant[]
+  inspectionPreChecklists InspectionPreChecklist[]
+  quarterlyChecklists QuarterlyChecklist[]
 
   @@index([propertyId])
   @@index([tenantId])
   @@index([status])
+}
+
+model QuarterlyChecklist {
+  id          String    @id @default(cuid())
+  tenancyId   String
+  token       String    @unique
+  expiresAt   DateTime
+  sentAt      DateTime?
+  completedAt DateTime?
+  answers     Json?
+  createdAt   DateTime  @default(now())
+
+  tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@index([tenancyId])
+  @@index([token])
 }
 
 model TenancyOccupant {
@@ -318,22 +336,25 @@ model RentPayment {
 }
 
 model Inspection {
-  id             String    @id @default(cuid())
-  propertyId     String
-  tenancyId      String?
-  type           String    // landlord, self
-  scheduledDate  DateTime?
-  completedDate  DateTime?
-  inspector      String?
-  nextDueDate    DateTime?
-  overallRating  Int?     // 1-5
-  status         String?  // scheduled, completed, cancelled
+  id                    String    @id @default(cuid())
+  propertyId            String
+  tenancyId             String?
+  type                  String    // landlord, self
+  scheduledDate         DateTime?
+  completedDate         DateTime?
+  inspector             String?
+  nextDueDate           DateTime?
+  overallRating         Int?      // 1-5
+  status                String?   // scheduled, completed, cancelled, pending_prechecklist
+  preChecklistToken     String?   @unique
+  preChecklistExpiresAt DateTime?
 
-  property  Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenancy   Tenancy?         @relation(fields: [tenancyId], references: [id])
-  items     InspectionItem[]
-  photos    InspectionPhoto[]
-  actions   InspectionAction[]
+  property    Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenancy     Tenancy?              @relation(fields: [tenancyId], references: [id])
+  items       InspectionItem[]
+  photos      InspectionPhoto[]
+  actions     InspectionAction[]
+  preChecklist InspectionPreChecklist?
 
   @@index([propertyId])
 }
@@ -375,6 +396,20 @@ model InspectionAction {
   inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
 
   @@index([inspectionId])
+}
+
+model InspectionPreChecklist {
+  id           String   @id @default(cuid())
+  inspectionId String   @unique
+  tenancyId    String
+  completedAt  DateTime @default(now())
+  answers      Json
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  tenancy    Tenancy    @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@index([tenancyId])
 }
 
 model Contractor {

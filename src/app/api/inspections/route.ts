@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
 import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 
 const createSchema = z.object({
   propertyId: z.string().min(1),
@@ -13,7 +14,7 @@ const createSchema = z.object({
   inspector: z.string().optional().nullable(),
   nextDueDate: z.string().optional().nullable(),
   overallRating: z.coerce.number().int().min(1).max(5).optional().nullable(),
-  status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
+  status: z.enum(["scheduled", "completed", "cancelled", "pending_prechecklist"]).optional(),
 });
 
 export async function GET() {
@@ -30,11 +31,12 @@ export async function GET() {
       tenancy: {
         select: {
           id: true,
-          tenant: { select: { id: true, name: true } },
+          tenant: { select: { id: true, name: true, phone: true } },
         },
       },
       items: true,
       actions: true,
+      preChecklist: { select: { id: true, completedAt: true } },
     },
     orderBy: { scheduledDate: "desc" },
   });
@@ -76,6 +78,16 @@ export async function POST(request: Request) {
     }
   }
 
+  const isLandlordWithTenancy =
+    data.type === "landlord" && data.tenancyId;
+  const preChecklistToken = isLandlordWithTenancy
+    ? randomBytes(32).toString("hex")
+    : null;
+  const preChecklistExpiresAt = preChecklistToken
+    ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    : null;
+  const defaultStatus = isLandlordWithTenancy ? "pending_prechecklist" : "scheduled";
+
   const inspection = await db.inspection.create({
     data: {
       propertyId: data.propertyId,
@@ -88,7 +100,9 @@ export async function POST(request: Request) {
       inspector: data.inspector || null,
       nextDueDate: data.nextDueDate ? new Date(data.nextDueDate) : null,
       overallRating: data.overallRating ?? null,
-      status: data.status ?? "scheduled",
+      status: data.status ?? defaultStatus,
+      preChecklistToken,
+      preChecklistExpiresAt,
     },
   });
 

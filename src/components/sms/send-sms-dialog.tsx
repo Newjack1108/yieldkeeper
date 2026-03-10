@@ -23,6 +23,7 @@ export const MESSAGE_TYPE_LABELS: Record<string, string> = {
   rent_reminder: "Rent reminder",
   overdue_alert: "Overdue alert",
   inspection_request: "Inspection request",
+  quarterly_checklist: "Quarterly checklist",
   maintenance_ack: "Maintenance ack",
   maintenance_complete: "Maintenance complete",
   custom: "Custom",
@@ -38,13 +39,20 @@ export function formatTemplateLabel(type: string): string {
 
 function replaceVars(
   template: string,
-  vars: { tenantName?: string; amount?: string; address?: string }
+  vars: {
+    tenantName?: string;
+    amount?: string;
+    address?: string;
+    checklistLink?: string;
+  }
 ): string {
   let out = template;
   if (vars.tenantName)
     out = out.replace(/\{\{tenantName\}\}/g, vars.tenantName);
   if (vars.amount) out = out.replace(/\{\{amount\}\}/g, vars.amount);
   if (vars.address) out = out.replace(/\{\{address\}\}/g, vars.address);
+  if (vars.checklistLink)
+    out = out.replace(/\{\{checklistLink\}\}/g, vars.checklistLink);
   return out;
 }
 

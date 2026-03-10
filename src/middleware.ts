@@ -7,8 +7,11 @@ const publicPaths = [
   "/sign-in",
   "/sign-up",
   "/tenant/set-password",
+  "/checklist/pre",
+  "/checklist/quarterly",
   "/api/webhooks",
   "/api/tenant-portal/set-password",
+  "/api/checklist",
 ];
 
 function isPublicPath(pathname: string): boolean {

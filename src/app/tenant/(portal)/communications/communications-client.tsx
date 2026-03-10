@@ -17,6 +17,7 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
   rent_reminder: "Rent reminder",
   overdue_alert: "Overdue alert",
   inspection_request: "Inspection request",
+  quarterly_checklist: "Quarterly checklist",
   maintenance_ack: "Maintenance ack",
   maintenance_complete: "Maintenance complete",
   custom: "Custom",

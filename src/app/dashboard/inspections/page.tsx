@@ -20,11 +20,12 @@ export default async function InspectionsPage() {
       tenancy: {
         select: {
           id: true,
-          tenant: { select: { id: true, name: true } },
+          tenant: { select: { id: true, name: true, phone: true } },
         },
       },
       items: true,
       actions: true,
+      preChecklist: { select: { id: true, completedAt: true } },
     },
     orderBy: { scheduledDate: "desc" },
   });
@@ -57,6 +58,13 @@ export default async function InspectionsPage() {
     nextDueDate: i.nextDueDate?.toISOString().slice(0, 10) ?? null,
     overallRating: i.overallRating,
     status: i.status ?? "scheduled",
+    preChecklistToken: i.preChecklistToken,
+    preChecklist: i.preChecklist
+      ? {
+          id: i.preChecklist.id,
+          completedAt: i.preChecklist.completedAt.toISOString(),
+        }
+      : null,
     items: i.items.map((item) => ({
       id: item.id,
       roomName: item.roomName,

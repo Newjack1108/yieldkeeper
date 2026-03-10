@@ -497,6 +497,11 @@ async function main() {
         "Hi {{tenantName}}. We need to arrange a property inspection at {{address}}. Please reply with your availability.",
     },
     {
+      type: "quarterly_checklist",
+      content:
+        "Hi {{tenantName}}. Please complete your quarterly property check for {{address}}: {{checklistLink}}",
+    },
+    {
       type: "maintenance_ack",
       content:
         "Hi {{tenantName}}. We've received your maintenance request for {{address}} and will be in touch shortly.",

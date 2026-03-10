@@ -12,7 +12,7 @@ const updateSchema = z.object({
   inspector: z.string().optional().nullable(),
   nextDueDate: z.string().optional().nullable(),
   overallRating: z.coerce.number().int().min(1).max(5).optional().nullable(),
-  status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
+  status: z.enum(["scheduled", "completed", "cancelled", "pending_prechecklist"]).optional(),
 });
 
 async function getInspectionForUser(
@@ -32,11 +32,12 @@ async function getInspectionForUser(
       tenancy: {
         select: {
           id: true,
-          tenant: { select: { id: true, name: true } },
+          tenant: { select: { id: true, name: true, phone: true } },
         },
       },
       items: true,
       actions: true,
+      preChecklist: { select: { id: true, completedAt: true } },
     },
   });
 }
@@ -133,11 +134,12 @@ export async function PATCH(
         tenancy: {
           select: {
             id: true,
-            tenant: { select: { id: true, name: true } },
+            tenant: { select: { id: true, name: true, phone: true } },
           },
         },
         items: true,
         actions: true,
+        preChecklist: { select: { id: true, completedAt: true } },
       },
     })
   );
