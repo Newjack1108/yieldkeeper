@@ -7,12 +7,46 @@ interface ExpenseChartProps {
 }
 
 const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
+
+const renderLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+  name,
+}: {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent?: number;
+  name: string;
+}) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos((-midAngle * Math.PI) / 180);
+  const y = cy + radius * Math.sin((-midAngle * Math.PI) / 180);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#ffffff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={12}
+    >
+      {`${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export function ExpenseChart({ data }: ExpenseChartProps) {
   if (data.length === 0) {
@@ -34,9 +68,8 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
           paddingAngle={2}
           dataKey="value"
           nameKey="name"
-          label={({ name, percent }) =>
-            `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-          }
+          label={renderLabel}
+          labelLine={false}
         >
           {data.map((_, index) => (
             <Cell

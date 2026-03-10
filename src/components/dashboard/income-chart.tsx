@@ -18,15 +18,18 @@ export function IncomeChart({ data }: IncomeChartProps) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--muted-foreground)"
+        />
         <XAxis
           dataKey="month"
           className="text-xs"
-          tick={{ fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fill: "#e5e5e5" }}
         />
         <YAxis
           className="text-xs"
-          tick={{ fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fill: "#e5e5e5" }}
           tickFormatter={(v) => `£${v}`}
         />
         <Tooltip
@@ -40,9 +43,9 @@ export function IncomeChart({ data }: IncomeChartProps) {
         <Line
           type="monotone"
           dataKey="income"
-          stroke="hsl(var(--chart-1))"
+          stroke="var(--chart-1)"
           strokeWidth={2}
-          dot={{ fill: "hsl(var(--chart-1))" }}
+          dot={{ fill: "var(--chart-1)" }}
         />
       </LineChart>
     </ResponsiveContainer>
