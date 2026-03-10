@@ -20,8 +20,11 @@ export default async function PropertiesPage() {
     notes: string | null;
     portfolioId: string;
     estateAgentId: string | null;
+    ownershipType: string;
+    landlordCompanyId: string | null;
     portfolio: { id: string; name: string };
     estateAgent: { id: string; name: string } | null;
+    landlordCompany: { id: string; name: string } | null;
   }> = [];
 
   if (user.role === "estate_agent") {
@@ -32,6 +35,7 @@ export default async function PropertiesPage() {
         include: {
           portfolio: { select: { id: true, name: true } },
           estateAgent: { select: { id: true, name: true } },
+          landlordCompany: { select: { id: true, name: true } },
         },
         orderBy: { address: "asc" },
       });
@@ -60,6 +64,7 @@ export default async function PropertiesPage() {
       include: {
         portfolio: { select: { id: true, name: true } },
         estateAgent: { select: { id: true, name: true } },
+        landlordCompany: { select: { id: true, name: true } },
       },
       orderBy: { address: "asc" },
     });
@@ -77,6 +82,9 @@ export default async function PropertiesPage() {
     portfolio: p.portfolio,
     estateAgentId: p.estateAgentId,
     estateAgent: p.estateAgent,
+    ownershipType: p.ownershipType ?? "sole",
+    landlordCompanyId: p.landlordCompanyId,
+    landlordCompany: p.landlordCompany,
   }));
 
   const estateAgents =
@@ -84,6 +92,15 @@ export default async function PropertiesPage() {
       ? await db.estateAgent.findMany({
           where: { createdByUserId: user.id },
           select: { id: true, name: true, company: true },
+        })
+      : [];
+
+  const landlordCompanies =
+    user.role === "portfolio_owner" || user.role === "admin"
+      ? await db.landlordCompany.findMany({
+          where: { userId: user.id },
+          select: { id: true, name: true, registrationNumber: true },
+          orderBy: { name: "asc" },
         })
       : [];
 
@@ -99,6 +116,7 @@ export default async function PropertiesPage() {
         initialProperties={properties}
         portfolios={portfolios}
         estateAgents={estateAgents}
+        landlordCompanies={landlordCompanies}
         userRole={user.role}
       />
     </div>

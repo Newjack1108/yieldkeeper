@@ -41,21 +41,28 @@ type Property = {
   portfolio: { name: string };
   estateAgentId?: string | null;
   estateAgent?: { id: string; name: string } | null;
+  ownershipType?: string;
+  landlordCompanyId?: string | null;
+  landlordCompany?: { id: string; name: string } | null;
 };
 
 type Portfolio = { id: string; name: string };
 
 type EstateAgent = { id: string; name: string; company: string | null };
 
+type LandlordCompany = { id: string; name: string; registrationNumber: string };
+
 export function PropertiesPageClient({
   initialProperties,
   portfolios,
   estateAgents,
+  landlordCompanies,
   userRole,
 }: {
   initialProperties: Property[];
   portfolios: Portfolio[];
   estateAgents: EstateAgent[];
+  landlordCompanies: LandlordCompany[];
   userRole: string;
 }) {
   const router = useRouter();
@@ -68,6 +75,8 @@ export function PropertiesPageClient({
   const [propertyType, setPropertyType] = useState("");
   const [occupancyStatus, setOccupancyStatus] = useState("vacant");
   const [estateAgentId, setEstateAgentId] = useState<string | null>(null);
+  const [ownershipType, setOwnershipType] = useState<"sole" | "limited_company">("sole");
+  const [landlordCompanyId, setLandlordCompanyId] = useState<string | null>(null);
 
   const isOwner = userRole === "portfolio_owner" || userRole === "admin";
 
@@ -80,11 +89,15 @@ export function PropertiesPageClient({
       setPropertyType(editing.propertyType ?? "");
       setOccupancyStatus(editing.occupancyStatus ?? "vacant");
       setEstateAgentId(editing.estateAgentId ?? null);
+      setOwnershipType((editing.ownershipType as "sole" | "limited_company") ?? "sole");
+      setLandlordCompanyId(editing.landlordCompanyId ?? null);
     } else {
       setPortfolioId(portfolios[0]?.id ?? "");
       setPropertyType("");
       setOccupancyStatus("vacant");
       setEstateAgentId(null);
+      setOwnershipType("sole");
+      setLandlordCompanyId(null);
     }
   }, [editing, open, portfolios]);
 
@@ -111,6 +124,8 @@ export function PropertiesPageClient({
         : undefined,
       occupancyStatus: formData.get("occupancyStatus") || undefined,
       estateAgentId: estateAgentId || undefined,
+      ownershipType: ownershipType,
+      landlordCompanyId: ownershipType === "limited_company" ? landlordCompanyId || undefined : null,
       notes: formData.get("notes") || undefined,
     };
 
@@ -128,6 +143,8 @@ export function PropertiesPageClient({
             currentValue: payload.currentValue,
             occupancyStatus: payload.occupancyStatus,
             estateAgentId: payload.estateAgentId ?? null,
+            ownershipType: payload.ownershipType,
+            landlordCompanyId: payload.landlordCompanyId ?? null,
             notes: payload.notes,
           }),
         });
@@ -139,6 +156,10 @@ export function PropertiesPageClient({
       } else {
         if (!payload.portfolioId) {
           setError("Please select a portfolio");
+          return;
+        }
+        if (payload.ownershipType === "limited_company" && !payload.landlordCompanyId) {
+          setError("Please select a landlord company");
           return;
         }
         const res = await fetch("/api/properties", {
@@ -245,6 +266,54 @@ export function PropertiesPageClient({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {isOwner && (
+                <div className="space-y-2">
+                  <Label htmlFor="ownershipType">Ownership</Label>
+                  <Select
+                    value={ownershipType}
+                    onValueChange={(v) => {
+                      setOwnershipType(v as "sole" | "limited_company");
+                      if (v === "sole") setLandlordCompanyId(null);
+                    }}
+                  >
+                    <SelectTrigger id="ownershipType" className="h-9 w-full">
+                      <SelectValue placeholder="Ownership" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sole">Sole ownership</SelectItem>
+                      <SelectItem value="limited_company">Limited company</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {ownershipType === "limited_company" && (
+                    <div className="mt-2 space-y-1">
+                      <Label htmlFor="landlordCompanyId">Company</Label>
+                      <Select
+                        value={landlordCompanyId ?? "none"}
+                        onValueChange={(v) =>
+                          setLandlordCompanyId(v === "none" ? null : v)
+                        }
+                      >
+                        <SelectTrigger id="landlordCompanyId" className="h-9 w-full">
+                          <SelectValue placeholder="Select company (required)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Select company</SelectItem>
+                          {landlordCompanies.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} ({c.registrationNumber})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {landlordCompanies.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No companies yet. Add one in Landlord Companies first.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
@@ -364,6 +433,7 @@ export function PropertiesPageClient({
                 <TableHead>Type</TableHead>
                 <TableHead>Bedrooms</TableHead>
                 <TableHead>Occupancy</TableHead>
+                <TableHead>Ownership</TableHead>
                 <TableHead>Portfolio</TableHead>
                 {isOwner && <TableHead>Estate Agent</TableHead>}
                 <TableHead className="w-[80px]">Actions</TableHead>
@@ -377,6 +447,11 @@ export function PropertiesPageClient({
                   <TableCell>{p.bedrooms ?? "-"}</TableCell>
                   <TableCell className="capitalize">
                     {p.occupancyStatus ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    {p.ownershipType === "limited_company" && p.landlordCompany
+                      ? p.landlordCompany.name
+                      : "Sole"}
                   </TableCell>
                   <TableCell>{p.portfolio?.name ?? "-"}</TableCell>
                   {isOwner && (

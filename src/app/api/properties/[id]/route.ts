@@ -13,6 +13,8 @@ const updateSchema = z.object({
   currentValue: z.coerce.number().min(0).optional().nullable(),
   occupancyStatus: z.enum(["occupied", "vacant", "partial"]).optional(),
   estateAgentId: z.string().optional().nullable(),
+  ownershipType: z.enum(["sole", "limited_company"]).optional(),
+  landlordCompanyId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
@@ -24,13 +26,17 @@ async function getPropertyForUser(
   if (role === "estate_agent") {
     const propertyIds = await getAgentPropertyIds(userId);
     if (!propertyIds.includes(propertyId)) return null;
-    return db.property.findFirst({ where: { id: propertyId } });
+    return db.property.findFirst({
+      where: { id: propertyId },
+      include: { landlordCompany: { select: { id: true, name: true } } },
+    });
   }
   return db.property.findFirst({
     where: {
       id: propertyId,
       portfolio: { userId },
     },
+    include: { landlordCompany: { select: { id: true, name: true } } },
   });
 }
 
@@ -87,6 +93,31 @@ export async function PUT(
     }
   }
 
+  if (
+    (data.ownershipType !== undefined || data.landlordCompanyId !== undefined) &&
+    (user.role === "portfolio_owner" || user.role === "admin")
+  ) {
+    const ownership = data.ownershipType ?? property?.ownershipType ?? "sole";
+    if (ownership === "limited_company") {
+      const companyId = data.landlordCompanyId ?? property?.landlordCompanyId;
+      if (!companyId) {
+        return NextResponse.json(
+          { error: "Landlord company is required for limited company ownership" },
+          { status: 400 }
+        );
+      }
+      const company = await db.landlordCompany.findFirst({
+        where: { id: companyId, userId: user.id },
+      });
+      if (!company) {
+        return NextResponse.json(
+          { error: "Landlord company not found or access denied" },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   const updateData: Record<string, unknown> = {
     ...(data.address != null && { address: data.address }),
     ...(data.propertyType != null && { propertyType: data.propertyType }),
@@ -103,6 +134,20 @@ export async function PUT(
   };
   if (data.estateAgentId !== undefined && (user.role === "portfolio_owner" || user.role === "admin")) {
     updateData.estateAgentId = data.estateAgentId;
+  }
+  if (
+    (data.ownershipType !== undefined || data.landlordCompanyId !== undefined) &&
+    (user.role === "portfolio_owner" || user.role === "admin")
+  ) {
+    if (data.ownershipType !== undefined) {
+      updateData.ownershipType = data.ownershipType;
+      updateData.landlordCompanyId =
+        data.ownershipType === "limited_company"
+          ? data.landlordCompanyId ?? property?.landlordCompanyId
+          : null;
+    } else if (data.landlordCompanyId !== undefined) {
+      updateData.landlordCompanyId = data.landlordCompanyId;
+    }
   }
 
   const updated = await db.property.update({

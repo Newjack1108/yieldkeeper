@@ -14,6 +14,8 @@ const createSchema = z.object({
   currentValue: z.coerce.number().min(0).optional(),
   occupancyStatus: z.enum(["occupied", "vacant", "partial"]).optional(),
   estateAgentId: z.string().optional().nullable(),
+  ownershipType: z.enum(["sole", "limited_company"]).optional(),
+  landlordCompanyId: z.string().optional().nullable(),
   notes: z.string().optional(),
 });
 
@@ -30,7 +32,10 @@ export async function GET() {
     }
     const properties = await db.property.findMany({
       where: { id: { in: propertyIds } },
-      include: { portfolio: { select: { name: true } } },
+      include: {
+        portfolio: { select: { name: true } },
+        landlordCompany: { select: { id: true, name: true } },
+      },
       orderBy: { address: "asc" },
     });
     return NextResponse.json(
@@ -46,6 +51,7 @@ export async function GET() {
     include: {
       properties: {
         orderBy: { address: "asc" },
+        include: { landlordCompany: { select: { id: true, name: true } } },
       },
     },
   });
@@ -74,7 +80,8 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { portfolioId, estateAgentId, ...data } = parsed.data;
+  const { portfolioId, estateAgentId, ownershipType, landlordCompanyId, ...data } =
+    parsed.data;
   const portfolio = await db.portfolio.findFirst({
     where: { id: portfolioId, userId: user.id },
   });
@@ -95,6 +102,24 @@ export async function POST(request: Request) {
       );
     }
   }
+  const ownership = ownershipType ?? "sole";
+  if (ownership === "limited_company") {
+    if (!landlordCompanyId) {
+      return NextResponse.json(
+        { error: "Landlord company is required for limited company ownership" },
+        { status: 400 }
+      );
+    }
+    const company = await db.landlordCompany.findFirst({
+      where: { id: landlordCompanyId, userId: user.id },
+    });
+    if (!company) {
+      return NextResponse.json(
+        { error: "Landlord company not found or access denied" },
+        { status: 400 }
+      );
+    }
+  }
   const property = await db.property.create({
     data: {
       portfolioId,
@@ -106,6 +131,9 @@ export async function POST(request: Request) {
       currentValue: data.currentValue ?? null,
       occupancyStatus: data.occupancyStatus ?? "vacant",
       estateAgentId: estateAgentId ?? null,
+      ownershipType: ownership,
+      landlordCompanyId:
+        ownership === "limited_company" ? landlordCompanyId : null,
       notes: data.notes ?? null,
     },
   });

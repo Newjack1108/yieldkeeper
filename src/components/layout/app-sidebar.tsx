@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Building2,
+  Briefcase,
   Users,
   PoundSterling,
   Home,
@@ -51,6 +52,7 @@ const ownerNavItems = [
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/sms", label: "SMS", icon: MessageSquare },
   { href: "/dashboard/estate-agents", label: "Estate Agents", icon: UserCog },
+  { href: "/dashboard/landlord-companies", label: "Landlord Companies", icon: Briefcase },
 ];
 
 const agentNavItems = [

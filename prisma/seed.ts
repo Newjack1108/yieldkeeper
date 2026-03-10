@@ -42,11 +42,24 @@ async function main() {
     },
   });
 
+  // Create landlord company (Ltd)
+  const landlordCompany = await prisma.landlordCompany.upsert({
+    where: { id: "demo-ltd-1" },
+    update: {},
+    create: {
+      id: "demo-ltd-1",
+      userId: user.id,
+      name: "Demo BTL Ltd",
+      registrationNumber: "12345678",
+      address: "10 Business Park, London EC1 1AA",
+    },
+  });
+
   // Create properties
   const properties = await Promise.all([
     prisma.property.upsert({
       where: { id: "prop-1" },
-      update: {},
+      update: { ownershipType: "limited_company", landlordCompanyId: landlordCompany.id },
       create: {
         id: "prop-1",
         portfolioId: portfolio.id,
@@ -57,12 +70,14 @@ async function main() {
         propertyType: "flat",
         bedrooms: 2,
         occupancyStatus: "occupied",
+        ownershipType: "limited_company",
+        landlordCompanyId: landlordCompany.id,
         notes: "Ground floor flat with garden access",
       },
     }),
     prisma.property.upsert({
       where: { id: "prop-2" },
-      update: {},
+      update: { ownershipType: "limited_company", landlordCompanyId: landlordCompany.id },
       create: {
         id: "prop-2",
         portfolioId: portfolio.id,
@@ -73,6 +88,8 @@ async function main() {
         propertyType: "house",
         bedrooms: 3,
         occupancyStatus: "occupied",
+        ownershipType: "limited_company",
+        landlordCompanyId: landlordCompany.id,
         notes: "End of terrace",
       },
     }),
