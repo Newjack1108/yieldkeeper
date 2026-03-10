@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,12 +58,13 @@ export default function SignUpPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src="/logo.png"
         alt="YieldKeeper"
+        className="mb-6 h-auto w-[200px]"
         width={200}
         height={57}
-        className="mb-6 h-auto w-[200px]"
       />
       <Card className="w-full max-w-sm border-white/10 bg-card">
         <CardHeader>

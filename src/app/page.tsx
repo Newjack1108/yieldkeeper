@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { validateRequest } from "@/lib/auth";
 
 const btnBase =
@@ -11,13 +10,13 @@ export default async function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
       <main className="mx-auto flex max-w-3xl flex-col items-center gap-10 px-6 py-16 text-center">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/logo.png"
           alt="YieldKeeper - Smart Portfolio Management"
+          className="h-auto w-[280px] max-w-full"
           width={280}
           height={80}
-          priority
-          className="h-auto w-[280px]"
         />
         <p className="max-w-xl text-lg text-muted-foreground">
           Smart portfolio management for modern landlords. Track rent, maintenance,

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -62,12 +61,13 @@ export function AppSidebar({ user }: { user: User }) {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
         <Link href="/dashboard" className="flex items-center">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/logo.png"
             alt="YieldKeeper"
+            className="h-8 w-auto"
             width={160}
             height={46}
-            className="h-8 w-auto"
           />
         </Link>
       </SidebarHeader>
