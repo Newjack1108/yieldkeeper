@@ -137,3 +137,22 @@
     color-scheme: dark;
   }
 }
+
+/* Tenant portal: touch-friendly targets on mobile (min 44px) */
+@media (max-width: 767px) {
+  .tenant-portal [data-slot="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tenant-portal input[data-slot="input"],
+  .tenant-portal [data-slot="input"] {
+    min-height: 44px;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  .tenant-portal [data-slot="select-trigger"] {
+    min-height: 44px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}

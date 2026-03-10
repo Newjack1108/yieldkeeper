@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -35,11 +37,53 @@ type Document = {
 };
 
 export function DocumentsClient({ documents }: { documents: Document[] }) {
+  const isMobile = useIsMobile();
+
   if (documents.length === 0) {
     return (
       <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
         No documents yet
       </p>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {documents.map((doc) => (
+          <Card key={doc.id}>
+            <CardContent className="flex flex-col gap-3 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <Badge variant="secondary" className="shrink-0">
+                  {TYPE_LABELS[doc.type] ?? doc.type}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(doc.uploadedAt), "dd MMM yyyy")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{doc.filename}</span>
+              </div>
+              <Link
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
+              >
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="w-full min-h-[44px] gap-2"
+                >
+                  <Download className="h-5 w-5" />
+                  Download
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
 

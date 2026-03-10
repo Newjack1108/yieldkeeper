@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: "Low",
@@ -147,6 +148,7 @@ export function MaintenanceClient({
   availableTasks: AvailableTasksByProperty[];
 }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [tenancyId, setTenancyId] = useState("");
   const [requestType, setRequestType] = useState<"predefined" | "custom">("predefined");
   const [propertyMaintenanceTaskId, setPropertyMaintenanceTaskId] = useState("");
@@ -263,7 +265,7 @@ export function MaintenanceClient({
                 }}
                 required
               >
-                <SelectTrigger id="tenancyId">
+                <SelectTrigger id="tenancyId" className="w-full min-h-[44px] md:min-h-0">
                   <SelectValue placeholder="Select property" />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,23 +280,29 @@ export function MaintenanceClient({
 
             <div className="space-y-2">
               <Label>Request type</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={requestType === "predefined"}
-                    onChange={() => setRequestType("predefined")}
-                  />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRequestType("predefined")}
+                  className={`flex-1 min-h-[44px] rounded-lg border px-4 py-3 text-left font-medium transition-colors ${
+                    requestType === "predefined"
+                      ? "border-primary bg-primary/5 text-foreground"
+                      : "border-input hover:bg-muted/50 text-muted-foreground"
+                  }`}
+                >
                   Predefined task
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={requestType === "custom"}
-                    onChange={() => setRequestType("custom")}
-                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequestType("custom")}
+                  className={`flex-1 min-h-[44px] rounded-lg border px-4 py-3 text-left font-medium transition-colors ${
+                    requestType === "custom"
+                      ? "border-primary bg-primary/5 text-foreground"
+                      : "border-input hover:bg-muted/50 text-muted-foreground"
+                  }`}
+                >
                   Custom request
-                </label>
+                </button>
               </div>
             </div>
 
@@ -307,7 +315,7 @@ export function MaintenanceClient({
                     instead.
                   </p>
                 ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {tasksForTenancy.map((task) => (
                       <button
                         key={task.id}
@@ -317,7 +325,7 @@ export function MaintenanceClient({
                             propertyMaintenanceTaskId === task.id ? "" : task.id
                           )
                         }
-                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${
+                        className={`flex min-h-[44px] items-center justify-between rounded-lg border p-3 text-left transition-colors ${
                           propertyMaintenanceTaskId === task.id
                             ? "border-primary bg-primary/5"
                             : "hover:bg-muted/50"
@@ -357,7 +365,7 @@ export function MaintenanceClient({
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={(v) => setPriority(v ?? "medium")}>
-                <SelectTrigger id="priority">
+                <SelectTrigger id="priority" className="w-full min-h-[44px] md:min-h-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -370,6 +378,8 @@ export function MaintenanceClient({
             </div>
             <Button
               type="submit"
+              size={isMobile ? "lg" : "default"}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
               disabled={
                 loading ||
                 tenancies.length === 0 ||
@@ -389,6 +399,63 @@ export function MaintenanceClient({
           <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
             No maintenance requests yet
           </p>
+        ) : isMobile ? (
+          <div className="space-y-3">
+            {maintenance.map((m) => {
+              const payable = getPayableAmount(m);
+              const canPay =
+                payable != null &&
+                payable > 0 &&
+                m.paymentStatus !== "paid" &&
+                m.paymentStatus !== "pending";
+              return (
+                <Card key={m.id}>
+                  <CardContent className="flex flex-col gap-3 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {format(new Date(m.reportedDate), "dd MMM yyyy")}
+                      </span>
+                      <Badge
+                        variant={
+                          m.status === "completed" ? "default" : "outline"
+                        }
+                      >
+                        {STATUS_LABELS[m.status] ?? m.status}
+                      </Badge>
+                    </div>
+                    <p className="font-medium">{m.title}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {m.quotedAmount != null
+                          ? `£${m.quotedAmount.toFixed(2)} (quoted)`
+                          : m.estimatedCost != null
+                            ? `£${m.estimatedCost.toFixed(2)}`
+                            : "—"}
+                      </span>
+                      {m.paymentStatus === "paid" ? (
+                        <span className="text-sm">
+                          Paid £{(m.tenantPaidAmount ?? 0).toFixed(2)}
+                        </span>
+                      ) : m.paymentStatus === "pending" ? (
+                        <span className="text-sm text-muted-foreground">
+                          Awaiting payment
+                        </span>
+                      ) : canPay ? (
+                        <Button
+                          variant="default"
+                          size="lg"
+                          className="min-h-[44px] shrink-0"
+                          onClick={() => handlePayClick(m)}
+                        >
+                          Pay £{payable!.toFixed(2)}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         ) : (
           <div className="rounded-lg border">
             <Table>

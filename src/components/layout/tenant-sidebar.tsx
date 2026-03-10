@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ type User = { id: string; email: string; name: string | null; role: string };
 export function TenantSidebar({ user }: { user: User }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   async function handleSignOut() {
     await fetch("/api/auth/sign-out", { method: "POST" });
@@ -71,7 +73,12 @@ export function TenantSidebar({ user }: { user: User }) {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    render={<Link href={item.href} />}
+                    render={
+                      <Link
+                        href={item.href}
+                        onClick={() => isMobile && setOpenMobile(false)}
+                      />
+                    }
                     isActive={
                       pathname === item.href ||
                       (item.href !== "/tenant" && pathname.startsWith(item.href))

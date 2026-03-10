@@ -18,6 +18,7 @@ import {
   LogOut,
   UserCog,
   HandCoins,
+  Settings,
 } from "lucide-react";
 
 import {
@@ -55,6 +56,7 @@ const ownerNavItems = [
   { href: "/dashboard/estate-agents", label: "Estate Agents", icon: UserCog },
   { href: "/dashboard/letting-agents", label: "Letting Agents", icon: HandCoins },
   { href: "/dashboard/landlord-companies", label: "Landlord Companies", icon: Briefcase },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 const agentNavItems = [

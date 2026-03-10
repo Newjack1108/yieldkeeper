@@ -21,6 +21,7 @@ import {
   Send,
   Copy,
 } from "lucide-react";
+import { SendSmsDialog } from "@/components/sms/send-sms-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,17 +149,26 @@ function buildActivityTimeline(profile: TenantProfile): ActivityItem[] {
   return items;
 }
 
+type SmsTemplate = { id: string; type: string; content: string; isActive: boolean };
+
 export function TenantProfileClient({
   initialProfile,
+  templates = [],
+  smsConfig = { testMode: false },
+  smsContext = { address: "", amount: "" },
   canInvite = false,
   canResendInvite = false,
 }: {
   initialProfile: TenantProfile;
+  templates?: SmsTemplate[];
+  smsConfig?: { testMode: boolean };
+  smsContext?: { address: string; amount: string };
   canInvite?: boolean;
   canResendInvite?: boolean;
 }) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
+  const [sendSmsOpen, setSendSmsOpen] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLinkUrl, setInviteLinkUrl] = useState<string | null>(null);
@@ -458,7 +468,23 @@ export function TenantProfileClient({
                 <p className="text-sm text-muted-foreground mt-2">{tenant.notes}</p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {tenant.phone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setSendSmsOpen(true)}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Send SMS
+                </Button>
+              )}
+              {!tenant.phone && (
+                <span className="text-xs text-muted-foreground">
+                  No phone on file — add one to send SMS
+                </span>
+              )}
               {(canInvite || canResendInvite) && (
                 <Button
                   variant="outline"
@@ -666,6 +692,17 @@ export function TenantProfileClient({
                 </Button>
               </DialogContent>
             </Dialog>
+            <SendSmsDialog
+              open={sendSmsOpen}
+              onOpenChange={setSendSmsOpen}
+              tenantId={tenant.id}
+              tenantName={tenant.name}
+              address={smsContext.address}
+              amount={smsContext.amount}
+              templates={templates}
+              smsConfig={smsConfig}
+              onSuccess={() => router.refresh()}
+            />
           </div>
         </div>
         </CardHeader>

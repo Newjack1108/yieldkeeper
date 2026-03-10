@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Send, MessageSquare, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Send, MessageSquare, AlertCircle, Settings } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -173,10 +174,19 @@ export function SmsPageClient({
       )}
 
       <div className="rounded-lg border bg-card p-4">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-          <MessageSquare className="h-5 w-5" />
-          Send SMS
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <MessageSquare className="h-5 w-5" />
+            Send SMS
+          </h2>
+          <Link
+            href="/dashboard/settings?tab=templates"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Manage templates
+          </Link>
+        </div>
         <form onSubmit={handleSend} className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
