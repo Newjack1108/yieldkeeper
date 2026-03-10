@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { syncOverdueSchedules } from "@/lib/rent";
 import { startOfMonth, endOfMonth, subMonths, addDays } from "date-fns";
 
 const CHART_COLORS = [
@@ -56,6 +57,7 @@ function toNum(d: { toNumber?: () => number } | null | undefined): number {
 export async function getDashboardSummary(
   userId: string
 ): Promise<DashboardSummary> {
+  await syncOverdueSchedules(userId);
   const portfolios = await db.portfolio.findMany({
     where: { userId },
     include: { properties: true },
