@@ -159,10 +159,25 @@ model Tenancy {
   rentPayments  RentPayment[]
   inspections   Inspection[]
   maintenanceItems MaintenanceRequest[]
+  occupants     TenancyOccupant[]
 
   @@index([propertyId])
   @@index([tenantId])
   @@index([status])
+}
+
+model TenancyOccupant {
+  id           String   @id @default(cuid())
+  tenancyId    String
+  name         String
+  relationship String   // partner, spouse, sibling, parent, child, roommate, lodger, other
+  phone        String?
+  email        String?
+  notes        String?  @db.Text
+
+  tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+
+  @@index([tenancyId])
 }
 
 model RentSchedule {

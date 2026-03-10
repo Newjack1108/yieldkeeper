@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Pencil,
+  Trash2,
   Mail,
   Phone,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
   Activity,
   Plus,
   ExternalLink,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +66,17 @@ const ACTIVITY_NOTE_TYPE_LABELS: Record<string, string> = {
   meeting: "Meeting",
   note: "Note",
   email: "Email",
+};
+
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  partner: "Partner",
+  spouse: "Spouse",
+  sibling: "Sibling",
+  parent: "Parent",
+  child: "Child",
+  roommate: "Roommate",
+  lodger: "Lodger",
+  other: "Other",
 };
 
 function formatDate(iso: string): string {
@@ -142,6 +155,16 @@ export function TenantProfileClient({
   const [profile, setProfile] = useState(initialProfile);
   const [editOpen, setEditOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [occupantOpen, setOccupantOpen] = useState(false);
+  const [occupantTenancyId, setOccupantTenancyId] = useState<string | null>(null);
+  const [editingOccupant, setEditingOccupant] = useState<{
+    id: string;
+    name: string;
+    relationship: string;
+    phone: string | null;
+    email: string | null;
+    notes: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -219,6 +242,132 @@ export function TenantProfileClient({
       setError("An error occurred");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openOccupantDialog(
+    tenancyId: string,
+    occupant: {
+      id: string;
+      name: string;
+      relationship: string;
+      phone: string | null;
+      email: string | null;
+      notes: string | null;
+    } | null
+  ) {
+    setOccupantTenancyId(tenancyId);
+    setEditingOccupant(occupant);
+    setOccupantOpen(true);
+    setError(null);
+  }
+
+  function closeOccupantDialog() {
+    setOccupantOpen(false);
+    setOccupantTenancyId(null);
+    setEditingOccupant(null);
+    setError(null);
+  }
+
+  async function handleOccupantSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!occupantTenancyId) return;
+    setError(null);
+    setLoading(true);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      name: formData.get("name") as string,
+      relationship: formData.get("relationship") as string,
+      phone: (formData.get("phone") as string) || undefined,
+      email: (formData.get("email") as string) || undefined,
+      notes: (formData.get("notes") as string) || undefined,
+    };
+    try {
+      if (editingOccupant) {
+        const res = await fetch(
+          `/api/tenancies/${occupantTenancyId}/occupants/${editingOccupant.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        if (!res.ok) {
+          const d = await res.json();
+          setError(d.error?.name?.[0] || "Failed to update");
+          return;
+        }
+        const updated = await res.json();
+        setProfile((p) => ({
+          ...p,
+          tenancies: p.tenancies.map((t) =>
+            t.id === occupantTenancyId
+              ? {
+                  ...t,
+                  occupants: t.occupants.map((o) =>
+                    o.id === editingOccupant.id ? updated : o
+                  ),
+                }
+              : t
+          ),
+        }));
+      } else {
+        const res = await fetch(
+          `/api/tenancies/${occupantTenancyId}/occupants`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        if (!res.ok) {
+          const d = await res.json();
+          setError(d.error?.name?.[0] || "Failed to add");
+          return;
+        }
+        const occupant = await res.json();
+        setProfile((p) => ({
+          ...p,
+          tenancies: p.tenancies.map((t) =>
+            t.id === occupantTenancyId
+              ? {
+                  ...t,
+                  occupants: [...(t.occupants || []), occupant],
+                }
+              : t
+          ),
+        }));
+      }
+      closeOccupantDialog();
+      form.reset();
+      router.refresh();
+    } catch {
+      setError("An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDeleteOccupant(tenancyId: string, occupantId: string) {
+    if (!confirm("Remove this occupant?")) return;
+    const res = await fetch(
+      `/api/tenancies/${tenancyId}/occupants/${occupantId}`,
+      { method: "DELETE" }
+    );
+    if (res.ok) {
+      setProfile((p) => ({
+        ...p,
+        tenancies: p.tenancies.map((t) =>
+          t.id === tenancyId
+            ? {
+                ...t,
+                occupants: (t.occupants || []).filter((o) => o.id !== occupantId),
+              }
+            : t
+        ),
+      }));
+      router.refresh();
     }
   }
 
@@ -335,6 +484,101 @@ export function TenantProfileClient({
                 </form>
               </DialogContent>
             </Dialog>
+            <Dialog
+              open={occupantOpen}
+              onOpenChange={(v) => (v ? null : closeOccupantDialog())}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingOccupant ? "Edit occupant" : "Add occupant"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form
+                  key={editingOccupant?.id ?? "new"}
+                  onSubmit={handleOccupantSubmit}
+                  className="space-y-4"
+                >
+                  {error && (
+                    <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="occupantName">Name</Label>
+                    <Input
+                      id="occupantName"
+                      name="name"
+                      required
+                      defaultValue={editingOccupant?.name ?? ""}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="occupantRelationship">Relationship</Label>
+                    <select
+                      id="occupantRelationship"
+                      name="relationship"
+                      required
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      defaultValue={editingOccupant?.relationship ?? ""}
+                    >
+                      <option value="">Select</option>
+                      {Object.entries(RELATIONSHIP_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="occupantPhone">Phone</Label>
+                    <Input
+                      id="occupantPhone"
+                      name="phone"
+                      type="tel"
+                      defaultValue={editingOccupant?.phone ?? ""}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="occupantEmail">Email</Label>
+                    <Input
+                      id="occupantEmail"
+                      name="email"
+                      type="email"
+                      defaultValue={editingOccupant?.email ?? ""}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="occupantNotes">Notes</Label>
+                    <Input
+                      id="occupantNotes"
+                      name="notes"
+                      defaultValue={editingOccupant?.notes ?? ""}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={closeOccupantDialog}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading
+                        ? "Saving..."
+                        : editingOccupant
+                          ? "Update"
+                          : "Add"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         {totalArrears > 0 && (
@@ -367,25 +611,87 @@ export function TenantProfileClient({
                   {profile.tenancies.map((t) => (
                     <div
                       key={t.id}
-                      className="flex flex-col gap-1 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="rounded-lg border p-4 space-y-4"
                     >
-                      <div>
-                        <p className="font-medium">
-                          {t.property.address}
-                          {t.unit ? ` – ${t.unit.unitLabel}` : ""}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatCurrency(t.rentAmount)}/{t.rentFrequency} – {t.status}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(t.startDate)} – {t.endDate ? formatDate(t.endDate) : "Ongoing"}
-                        </p>
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {t.property.address}
+                            {t.unit ? ` – ${t.unit.unitLabel}` : ""}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatCurrency(t.rentAmount)}/{t.rentFrequency} – {t.status}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(t.startDate)} – {t.endDate ? formatDate(t.endDate) : "Ongoing"}
+                          </p>
+                        </div>
+                        {t.arrears > 0 && (
+                          <Badge variant="destructive">
+                            Arrears: {formatCurrency(t.arrears)}
+                          </Badge>
+                        )}
                       </div>
-                      {t.arrears > 0 && (
-                        <Badge variant="destructive">
-                          Arrears: {formatCurrency(t.arrears)}
-                        </Badge>
-                      )}
+                      <div>
+                        <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Declared occupants
+                        </p>
+                        {(t.occupants?.length ?? 0) === 0 ? (
+                          <p className="text-muted-foreground text-sm mb-2">
+                            No occupants declared
+                          </p>
+                        ) : (
+                          <ul className="space-y-1 mb-2">
+                            {t.occupants.map((o) => (
+                              <li
+                                key={o.id}
+                                className="flex items-center justify-between gap-2 text-sm py-1"
+                              >
+                                <span>
+                                  {o.name}
+                                  <span className="text-muted-foreground ml-1">
+                                    ({RELATIONSHIP_LABELS[o.relationship] ?? o.relationship})
+                                  </span>
+                                </span>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() =>
+                                      openOccupantDialog(t.id, {
+                                        id: o.id,
+                                        name: o.name,
+                                        relationship: o.relationship,
+                                        phone: o.phone,
+                                        email: o.email,
+                                        notes: o.notes,
+                                      })
+                                    }
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => handleDeleteOccupant(t.id, o.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openOccupantDialog(t.id, null)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add occupant
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

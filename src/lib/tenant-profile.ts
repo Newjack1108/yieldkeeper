@@ -43,6 +43,9 @@ export async function getTenantProfile(tenantId: string, userId: string) {
             property: { select: { id: true, address: true } },
           },
         },
+        occupants: {
+          orderBy: { name: "asc" },
+        },
       },
       orderBy: { startDate: "desc" },
     }),
@@ -142,6 +145,14 @@ export async function getTenantProfile(tenantId: string, userId: string) {
         status: i.status,
         overallRating: i.overallRating,
         property: i.property,
+      })),
+      occupants: t.occupants.map((o) => ({
+        id: o.id,
+        name: o.name,
+        relationship: o.relationship,
+        phone: o.phone,
+        email: o.email,
+        notes: o.notes,
       })),
     })),
     smsLogs: smsLogs.map((s) => ({
