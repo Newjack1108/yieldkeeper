@@ -28,6 +28,7 @@ model User {
   landlordCompanies   LandlordCompany[]
   lettingAgents        LettingAgent[]
   tenantsWithLogin     Tenant[]         @relation("TenantLogin")
+  maintenanceQuotedBy  MaintenanceRequest[] @relation("MaintenanceQuotedBy")
 }
 
 // Lucia v3 session
@@ -137,6 +138,7 @@ model Property {
   tenancies         Tenancy[]
   inspections       Inspection[]
   maintenanceItems  MaintenanceRequest[]
+  maintenanceTasks  PropertyMaintenanceTask[]
   complianceRecords ComplianceRecord[]
   expenses          PropertyExpense[]
   documents         Document[]
@@ -156,6 +158,22 @@ model Unit {
 
   property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   tenancies Tenancy[]
+
+  @@index([propertyId])
+}
+
+model PropertyMaintenanceTask {
+  id         String   @id @default(cuid())
+  propertyId String
+  taskType   String   // window_cleaning, grass_cutting, gutter_cleanout, patio_cleaning, fence_repair, other
+  name       String
+  price      Decimal  @db.Decimal(12, 2)
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([propertyId])
 }
@@ -377,29 +395,39 @@ model Contractor {
 }
 
 model MaintenanceRequest {
-  id             String    @id @default(cuid())
-  propertyId     String
-  tenancyId      String?
-  contractorId   String?
-  title          String
-  description    String?   @db.Text
-  priority       String    @default("medium") // low, medium, urgent, emergency
-  status         String    @default("reported") // reported, assigned, quoted, approved, in_progress, completed
-  estimatedCost  Decimal?  @db.Decimal(12, 2)
-  actualCost     Decimal?  @db.Decimal(12, 2)
-  reportedDate   DateTime  @default(now())
-  completedDate  DateTime?
-  invoiceUrl     String?
+  id                       String    @id @default(cuid())
+  propertyId               String
+  tenancyId                String?
+  contractorId             String?
+  propertyMaintenanceTaskId String?
+  title                    String
+  description              String?   @db.Text
+  priority                 String    @default("medium") // low, medium, urgent, emergency
+  status                   String    @default("reported") // reported, assigned, quoted, approved, in_progress, completed
+  estimatedCost            Decimal?  @db.Decimal(12, 2)
+  actualCost               Decimal?  @db.Decimal(12, 2)
+  quotedAmount             Decimal?  @db.Decimal(12, 2)
+  quotedAt                 DateTime?
+  quotedById               String?
+  paymentStatus            String    @default("none") // none, pending, paid, failed
+  stripePaymentIntentId    String?
+  tenantPaidAmount         Decimal?  @db.Decimal(12, 2)
+  reportedDate             DateTime  @default(now())
+  completedDate            DateTime?
+  invoiceUrl               String?
 
-  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  tenancy    Tenancy?    @relation(fields: [tenancyId], references: [id])
-  contractor Contractor? @relation(fields: [contractorId], references: [id])
-  expenses   PropertyExpense[]
-  documents  Document[]
+  property                 Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenancy                  Tenancy?   @relation(fields: [tenancyId], references: [id])
+  contractor               Contractor? @relation(fields: [contractorId], references: [id])
+  propertyMaintenanceTask  PropertyMaintenanceTask? @relation(fields: [propertyMaintenanceTaskId], references: [id], onDelete: SetNull)
+  quotedBy                 User?      @relation("MaintenanceQuotedBy", fields: [quotedById], references: [id], onDelete: SetNull)
+  expenses                 PropertyExpense[]
+  documents                Document[]
 
   @@index([propertyId])
   @@index([contractorId])
   @@index([status])
+  @@index([propertyMaintenanceTaskId])
 }
 
 model PropertyExpense {

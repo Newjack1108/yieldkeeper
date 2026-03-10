@@ -11,18 +11,42 @@ export default async function TenantMaintenancePage() {
   if (!tenant) return null;
 
   const tenancyIds = tenant.tenancies.map((t) => t.id);
+  const propertyIds = tenant.tenancies.map((t) => t.propertyId);
 
-  const maintenance = await db.maintenanceRequest.findMany({
-    where: { tenancyId: { in: tenancyIds } },
-    include: {
-      property: { select: { address: true } },
-    },
-    orderBy: { reportedDate: "desc" },
-  });
+  const [maintenance, availableTasks] = await Promise.all([
+    db.maintenanceRequest.findMany({
+      where: { tenancyId: { in: tenancyIds } },
+      include: {
+        property: { select: { address: true } },
+        propertyMaintenanceTask: {
+          select: { id: true, taskType: true, name: true, price: true },
+        },
+      },
+      orderBy: { reportedDate: "desc" },
+    }),
+    db.propertyMaintenanceTask.findMany({
+      where: { propertyId: { in: propertyIds }, enabled: true },
+      orderBy: { taskType: "asc" },
+    }),
+  ]);
 
   const tenancies = tenant.tenancies.map((t) => ({
     id: t.id,
     address: t.property.address,
+    propertyId: t.propertyId,
+  }));
+
+  const tasksByProperty = tenancies.map((t) => ({
+    tenancyId: t.id,
+    propertyAddress: t.address,
+    tasks: availableTasks
+      .filter((task) => task.propertyId === t.propertyId)
+      .map((task) => ({
+        id: task.id,
+        taskType: task.taskType,
+        name: task.name,
+        price: Number(task.price),
+      })),
   }));
 
   const maintenanceList = maintenance.map((m) => ({
@@ -34,6 +58,12 @@ export default async function TenantMaintenancePage() {
     reportedDate: m.reportedDate.toISOString(),
     completedDate: m.completedDate?.toISOString() ?? null,
     propertyAddress: m.property?.address ?? null,
+    quotedAmount: m.quotedAmount != null ? Number(m.quotedAmount) : null,
+    paymentStatus: m.paymentStatus,
+    tenantPaidAmount: m.tenantPaidAmount != null ? Number(m.tenantPaidAmount) : null,
+    estimatedCost: m.estimatedCost != null ? Number(m.estimatedCost) : null,
+    propertyMaintenanceTaskId: m.propertyMaintenanceTaskId,
+    taskName: m.propertyMaintenanceTask?.name,
   }));
 
   return (
@@ -47,6 +77,7 @@ export default async function TenantMaintenancePage() {
       <MaintenanceClient
         tenancies={tenancies}
         maintenance={maintenanceList}
+        availableTasks={tasksByProperty}
       />
     </div>
   );

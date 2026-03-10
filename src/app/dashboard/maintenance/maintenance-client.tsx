@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, MessageSquareQuote, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -43,6 +43,10 @@ type MaintenanceRow = {
   status: string;
   estimatedCost: number | null;
   actualCost: number | null;
+  quotedAmount: number | null;
+  paymentStatus: string;
+  tenantPaidAmount: number | null;
+  propertyMaintenanceTaskId: string | null;
   reportedDate: string;
   completedDate: string | null;
   invoiceUrl: string | null;
@@ -128,6 +132,9 @@ export function MaintenancePageClient({
   const [contractorId, setContractorId] = useState("");
   const [priority, setPriority] = useState("medium");
   const [status, setStatus] = useState("reported");
+  const [quoteOpen, setQuoteOpen] = useState<MaintenanceRow | null>(null);
+  const [quoteAmount, setQuoteAmount] = useState("");
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   useEffect(() => {
     setMaintenance(initialMaintenance);
@@ -255,8 +262,79 @@ export function MaintenancePageClient({
     setError(null);
   }
 
+  async function handleQuote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quoteOpen) return;
+    setQuoteLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/maintenance/${quoteOpen.id}/quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quotedAmount: Number(quoteAmount) }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setError(d.error?.quotedAmount?.[0] ?? d.error ?? "Failed to add quote");
+        return;
+      }
+      setQuoteOpen(null);
+      setQuoteAmount("");
+      router.refresh();
+      const updated = await res.json();
+      setMaintenance((prev) =>
+        prev.map((m) =>
+          m.id === quoteOpen.id
+            ? {
+                ...m,
+                quotedAmount: updated.quotedAmount,
+                status: "quoted",
+              }
+            : m
+        )
+      );
+    } finally {
+      setQuoteLoading(false);
+    }
+  }
+
+  async function handleRequestPayment(m: MaintenanceRow) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/maintenance/${m.id}/create-payment-intent`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setError(d.error ?? "Failed to create payment request");
+        return;
+      }
+      router.refresh();
+      setMaintenance((prev) =>
+        prev.map((x) =>
+          x.id === m.id ? { ...x, paymentStatus: "pending" } : x
+        )
+      );
+    } catch {
+      setError("Failed to request payment");
+    }
+  }
+
+  function getPayableAmount(m: MaintenanceRow): number | null {
+    if (m.paymentStatus === "paid") return null;
+    if (m.propertyMaintenanceTaskId && m.estimatedCost != null)
+      return m.estimatedCost;
+    if (m.quotedAmount != null) return m.quotedAmount;
+    return m.estimatedCost;
+  }
+
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : closeDialog())}>
           <DialogTrigger>
@@ -503,6 +581,49 @@ export function MaintenancePageClient({
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={!!quoteOpen}
+          onOpenChange={(v) => !v && setQuoteOpen(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add quote</DialogTitle>
+            </DialogHeader>
+            {quoteOpen && (
+              <form onSubmit={handleQuote} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  {quoteOpen.title}
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="quoteAmount">Quote amount (£)</Label>
+                  <Input
+                    id="quoteAmount"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={quoteAmount}
+                    onChange={(e) => setQuoteAmount(e.target.value)}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={quoteLoading}>
+                    {quoteLoading ? "Saving..." : "Add quote"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setQuoteOpen(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {maintenance.length === 0 ? (
@@ -512,7 +633,7 @@ export function MaintenancePageClient({
         </div>
       ) : (
         <div className="rounded-md border">
-          <Table>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Property</TableHead>
@@ -521,52 +642,110 @@ export function MaintenancePageClient({
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Cost</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Reported</TableHead>
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {maintenance.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.property.address}</TableCell>
-                  <TableCell>{m.title}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {m.tenancy?.tenant.name ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <PriorityBadge priority={m.priority} />
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={m.status} />
-                  </TableCell>
-                  <TableCell>
-                    {m.actualCost != null
-                      ? `£${m.actualCost.toFixed(2)}`
-                      : m.estimatedCost != null
-                        ? `~£${m.estimatedCost.toFixed(2)}`
-                        : "—"}
-                  </TableCell>
-                  <TableCell>{m.reportedDate}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openEdit(m)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDelete(m.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {maintenance.map((m) => {
+                const payable = getPayableAmount(m);
+                const canQuote =
+                  !m.propertyMaintenanceTaskId &&
+                  m.status === "reported" &&
+                  m.tenancyId;
+                const canRequestPayment =
+                  payable != null &&
+                  payable > 0 &&
+                  m.paymentStatus !== "paid" &&
+                  m.paymentStatus !== "pending" &&
+                  m.tenancyId;
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">
+                      {m.property.address}
+                    </TableCell>
+                    <TableCell>
+                      {m.title}
+                      {m.propertyMaintenanceTaskId && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          (task)
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {m.tenancy?.tenant.name ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <PriorityBadge priority={m.priority} />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={m.status} />
+                    </TableCell>
+                    <TableCell>
+                      {m.actualCost != null
+                        ? `£${m.actualCost.toFixed(2)}`
+                        : m.quotedAmount != null
+                          ? `£${m.quotedAmount.toFixed(2)} (quoted)`
+                          : m.estimatedCost != null
+                            ? `~£${m.estimatedCost.toFixed(2)}`
+                            : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {m.paymentStatus === "paid"
+                        ? `Paid £${(m.tenantPaidAmount ?? 0).toFixed(2)}`
+                        : m.paymentStatus === "pending"
+                          ? "Awaiting payment"
+                          : canRequestPayment ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRequestPayment(m)}
+                              >
+                                <CreditCard className="mr-1 h-3 w-3" />
+                                Request payment
+                              </Button>
+                            ) : (
+                              "—"
+                            )}
+                    </TableCell>
+                    <TableCell>{m.reportedDate}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {canQuote && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Add quote"
+                            onClick={() => {
+                              setQuoteOpen(m);
+                              setQuoteAmount(
+                                m.estimatedCost?.toString() ?? ""
+                              );
+                            }}
+                          >
+                            <MessageSquareQuote className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEdit(m)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(m.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

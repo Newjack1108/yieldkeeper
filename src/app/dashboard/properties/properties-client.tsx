@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MaintenanceTasksDialog } from "@/components/maintenance-tasks-dialog";
 
 type Property = {
   id: string;
@@ -86,6 +87,10 @@ export function PropertiesPageClient({
   const [lettingAgentAssignedAt, setLettingAgentAssignedAt] = useState("");
   const [ownershipType, setOwnershipType] = useState<"sole" | "limited_company">("sole");
   const [landlordCompanyId, setLandlordCompanyId] = useState<string | null>(null);
+  const [maintenanceTasksProperty, setMaintenanceTasksProperty] = useState<{
+    id: string;
+    address: string;
+  } | null>(null);
 
   const isOwner = userRole === "portfolio_owner" || userRole === "admin";
 
@@ -533,6 +538,19 @@ export function PropertiesPageClient({
                       <Button
                         variant="ghost"
                         size="icon-sm"
+                        title="Maintenance tasks"
+                        onClick={() =>
+                          setMaintenanceTasksProperty({
+                            id: p.id,
+                            address: p.address,
+                          })
+                        }
+                      >
+                        <Wrench className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => openEdit(p)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -553,6 +571,16 @@ export function PropertiesPageClient({
             </TableBody>
           </Table>
         </div>
+      )}
+      {maintenanceTasksProperty && (
+        <MaintenanceTasksDialog
+          propertyId={maintenanceTasksProperty.id}
+          propertyAddress={maintenanceTasksProperty.address}
+          open={!!maintenanceTasksProperty}
+          onOpenChange={(open) =>
+            !open && setMaintenanceTasksProperty(null)
+          }
+        />
       )}
     </div>
   );

@@ -22,6 +22,7 @@ const updateSchema = z.object({
     .optional(),
   estimatedCost: z.coerce.number().min(0).optional().nullable(),
   actualCost: z.coerce.number().min(0).optional().nullable(),
+  quotedAmount: z.coerce.number().min(0).optional().nullable(),
   completedDate: z.string().optional().nullable(),
   invoiceUrl: z.string().optional().nullable(),
 });
@@ -127,30 +128,37 @@ export async function PATCH(
     }
   }
 
+  const updateData: Record<string, unknown> = {
+    ...(data.tenancyId !== undefined && { tenancyId: data.tenancyId }),
+    ...(data.contractorId !== undefined && {
+      contractorId: data.contractorId,
+    }),
+    ...(data.title != null && { title: data.title }),
+    ...(data.description !== undefined && {
+      description: data.description,
+    }),
+    ...(data.priority != null && { priority: data.priority }),
+    ...(data.status != null && { status: data.status }),
+    ...(data.estimatedCost !== undefined && {
+      estimatedCost: data.estimatedCost,
+    }),
+    ...(data.actualCost !== undefined && { actualCost: data.actualCost }),
+    ...(data.quotedAmount !== undefined && { quotedAmount: data.quotedAmount }),
+    ...(data.completedDate !== undefined && {
+      completedDate: data.completedDate
+        ? new Date(data.completedDate)
+        : null,
+    }),
+    ...(data.invoiceUrl !== undefined && { invoiceUrl: data.invoiceUrl }),
+  };
+  if (data.quotedAmount !== undefined && data.quotedAmount != null) {
+    updateData.quotedAt = new Date();
+    updateData.quotedById = user.id;
+    updateData.status = "quoted";
+  }
   const updated = await db.maintenanceRequest.update({
     where: { id },
-    data: {
-      ...(data.tenancyId !== undefined && { tenancyId: data.tenancyId }),
-      ...(data.contractorId !== undefined && {
-        contractorId: data.contractorId,
-      }),
-      ...(data.title != null && { title: data.title }),
-      ...(data.description !== undefined && {
-        description: data.description,
-      }),
-      ...(data.priority != null && { priority: data.priority }),
-      ...(data.status != null && { status: data.status }),
-      ...(data.estimatedCost !== undefined && {
-        estimatedCost: data.estimatedCost,
-      }),
-      ...(data.actualCost !== undefined && { actualCost: data.actualCost }),
-      ...(data.completedDate !== undefined && {
-        completedDate: data.completedDate
-          ? new Date(data.completedDate)
-          : null,
-      }),
-      ...(data.invoiceUrl !== undefined && { invoiceUrl: data.invoiceUrl }),
-    },
+    data: updateData,
   });
 
   return NextResponse.json(

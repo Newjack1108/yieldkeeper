@@ -1,20 +1,25 @@
 import { redirect } from "next/navigation";
 import { validateRequest } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { MaintenancePageClient } from "./maintenance-client";
 
 export default async function MaintenancePage() {
   const { user } = await validateRequest();
   if (!user) redirect("/sign-in");
 
-  const portfolios = await db.portfolio.findMany({
-    where: { userId: user.id },
-    include: { properties: { select: { id: true, address: true } } },
-  });
-  const portfolioIds = portfolios.map((p) => p.id);
+  const propertyIds = await getPropertyIdsForUser(user.id, user.role);
+  if (propertyIds.length === 0) {
+    return (
+      <div className="space-y-8">
+        <h1 className="text-2xl font-bold tracking-tight">Maintenance</h1>
+        <p className="text-muted-foreground">No properties assigned</p>
+      </div>
+    );
+  }
 
   const maintenance = await db.maintenanceRequest.findMany({
-    where: { property: { portfolioId: { in: portfolioIds } } },
+    where: { propertyId: { in: propertyIds } },
     include: {
       property: { select: { id: true, address: true } },
       tenancy: {
@@ -29,13 +34,13 @@ export default async function MaintenancePage() {
   });
 
   const properties = await db.property.findMany({
-    where: { portfolioId: { in: portfolioIds } },
+    where: { id: { in: propertyIds } },
     select: { id: true, address: true },
     orderBy: { address: "asc" },
   });
 
   const tenancies = await db.tenancy.findMany({
-    where: { property: { portfolioId: { in: portfolioIds } } },
+    where: { propertyId: { in: propertyIds } },
     include: {
       property: { select: { id: true, address: true } },
       tenant: { select: { id: true, name: true } },
@@ -62,6 +67,10 @@ export default async function MaintenancePage() {
     status: m.status,
     estimatedCost: m.estimatedCost != null ? Number(m.estimatedCost) : null,
     actualCost: m.actualCost != null ? Number(m.actualCost) : null,
+    quotedAmount: m.quotedAmount != null ? Number(m.quotedAmount) : null,
+    paymentStatus: m.paymentStatus,
+    tenantPaidAmount: m.tenantPaidAmount != null ? Number(m.tenantPaidAmount) : null,
+    propertyMaintenanceTaskId: m.propertyMaintenanceTaskId,
     reportedDate: m.reportedDate.toISOString().slice(0, 10),
     completedDate: m.completedDate?.toISOString().slice(0, 10) ?? null,
     invoiceUrl: m.invoiceUrl,

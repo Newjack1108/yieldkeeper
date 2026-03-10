@@ -263,6 +263,33 @@ async function main() {
     });
   }
 
+  // Create property maintenance tasks (predefined tasks tenants can request and pay for)
+  const maintenanceTaskTypes = [
+    { taskType: "window_cleaning", name: "Window cleaning", price: 45 },
+    { taskType: "grass_cutting", name: "Grass cutting", price: 35 },
+    { taskType: "gutter_cleanout", name: "Gutter cleanout", price: 85 },
+    { taskType: "patio_cleaning", name: "Patio cleaning", price: 55 },
+    { taskType: "fence_repair", name: "Fence repair", price: 120 },
+  ];
+  for (const prop of properties) {
+    for (const task of maintenanceTaskTypes) {
+      await prisma.propertyMaintenanceTask.upsert({
+        where: {
+          id: `task-${prop.id}-${task.taskType}`,
+        },
+        update: { price: task.price, enabled: true },
+        create: {
+          id: `task-${prop.id}-${task.taskType}`,
+          propertyId: prop.id,
+          taskType: task.taskType,
+          name: task.name,
+          price: task.price,
+          enabled: true,
+        },
+      });
+    }
+  }
+
   // Create contractor
   const contractor = await prisma.contractor.upsert({
     where: { id: "contractor-1" },
