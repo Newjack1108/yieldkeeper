@@ -13,6 +13,8 @@ const updateSchema = z.object({
   currentValue: z.coerce.number().min(0).optional().nullable(),
   occupancyStatus: z.enum(["occupied", "vacant", "partial"]).optional(),
   estateAgentId: z.string().optional().nullable(),
+  lettingAgentId: z.string().optional().nullable(),
+  lettingAgentAssignedAt: z.string().optional().nullable(),
   ownershipType: z.enum(["sole", "limited_company"]).optional(),
   landlordCompanyId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -92,6 +94,19 @@ export async function PUT(
       }
     }
   }
+  if (data.lettingAgentId !== undefined && (user.role === "portfolio_owner" || user.role === "admin")) {
+    if (data.lettingAgentId) {
+      const agent = await db.lettingAgent.findFirst({
+        where: { id: data.lettingAgentId, userId: user.id },
+      });
+      if (!agent) {
+        return NextResponse.json(
+          { error: "Letting agent not found or access denied" },
+          { status: 400 }
+        );
+      }
+    }
+  }
 
   if (
     (data.ownershipType !== undefined || data.landlordCompanyId !== undefined) &&
@@ -134,6 +149,14 @@ export async function PUT(
   };
   if (data.estateAgentId !== undefined && (user.role === "portfolio_owner" || user.role === "admin")) {
     updateData.estateAgentId = data.estateAgentId;
+  }
+  if (data.lettingAgentId !== undefined && (user.role === "portfolio_owner" || user.role === "admin")) {
+    updateData.lettingAgentId = data.lettingAgentId;
+    updateData.lettingAgentAssignedAt = data.lettingAgentId && data.lettingAgentAssignedAt
+      ? new Date(data.lettingAgentAssignedAt)
+      : data.lettingAgentId
+        ? null
+        : null;
   }
   if (
     (data.ownershipType !== undefined || data.landlordCompanyId !== undefined) &&

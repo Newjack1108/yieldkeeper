@@ -14,6 +14,8 @@ const createSchema = z.object({
   currentValue: z.coerce.number().min(0).optional(),
   occupancyStatus: z.enum(["occupied", "vacant", "partial"]).optional(),
   estateAgentId: z.string().optional().nullable(),
+  lettingAgentId: z.string().optional().nullable(),
+  lettingAgentAssignedAt: z.string().optional().nullable(),
   ownershipType: z.enum(["sole", "limited_company"]).optional(),
   landlordCompanyId: z.string().optional().nullable(),
   notes: z.string().optional(),
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const { portfolioId, estateAgentId, ownershipType, landlordCompanyId, ...data } =
+  const { portfolioId, estateAgentId, lettingAgentId, lettingAgentAssignedAt, ownershipType, landlordCompanyId, ...data } =
     parsed.data;
   const portfolio = await db.portfolio.findFirst({
     where: { id: portfolioId, userId: user.id },
@@ -98,6 +100,17 @@ export async function POST(request: Request) {
     if (!agent) {
       return NextResponse.json(
         { error: "Estate agent not found or access denied" },
+        { status: 400 }
+      );
+    }
+  }
+  if (lettingAgentId) {
+    const agent = await db.lettingAgent.findFirst({
+      where: { id: lettingAgentId, userId: user.id },
+    });
+    if (!agent) {
+      return NextResponse.json(
+        { error: "Letting agent not found or access denied" },
         { status: 400 }
       );
     }
@@ -131,6 +144,8 @@ export async function POST(request: Request) {
       currentValue: data.currentValue ?? null,
       occupancyStatus: data.occupancyStatus ?? "vacant",
       estateAgentId: estateAgentId ?? null,
+      lettingAgentId: lettingAgentId ?? null,
+      lettingAgentAssignedAt: lettingAgentAssignedAt ? new Date(lettingAgentAssignedAt) : null,
       ownershipType: ownership,
       landlordCompanyId:
         ownership === "limited_company" ? landlordCompanyId : null,

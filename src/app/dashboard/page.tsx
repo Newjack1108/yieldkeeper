@@ -9,6 +9,7 @@ import {
   Calendar,
   FileCheck,
   TrendingUp,
+  HandCoins,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,6 +113,12 @@ export default async function DashboardPage() {
               title="Insurance Renewal"
               value={dashboardSummary.insuranceRenewal}
               icon={FileCheck}
+              format="currency"
+            />
+            <DashboardKpiCard
+              title="Agent Costs"
+              value={dashboardSummary.agentCostsThisMonth}
+              icon={HandCoins}
               format="currency"
             />
             <DashboardKpiCard

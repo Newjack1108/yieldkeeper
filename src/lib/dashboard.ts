@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { syncOverdueSchedules } from "@/lib/rent";
 import { getPropertyIdsForUser } from "@/lib/estate-agent";
-import { startOfMonth, endOfMonth, subMonths, addDays } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, addDays, addMonths } from "date-fns";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -19,6 +19,7 @@ export type DashboardSummary = {
   complianceDueSoon: number;
   mortgageDue: number;
   insuranceRenewal: number;
+  agentCostsThisMonth: number;
   netMonthlyProfit: number;
 };
 
@@ -63,6 +64,87 @@ function toNum(d: { toNumber?: () => number } | null | undefined): number {
   return Number(d) || 0;
 }
 
+export type AgentCostsBreakdown = {
+  agentSetup: number;
+  agentManagement: number;
+  agentInventory: number;
+  total: number;
+};
+
+export async function getMonthlyAgentCosts(
+  propertyIds: string[],
+  monthStart: Date,
+  monthEnd: Date
+): Promise<AgentCostsBreakdown> {
+  if (propertyIds.length === 0) {
+    return { agentSetup: 0, agentManagement: 0, agentInventory: 0, total: 0 };
+  }
+
+  const propertiesWithAgent = await db.property.findMany({
+    where: {
+      id: { in: propertyIds },
+      lettingAgentId: { not: null },
+    },
+    include: {
+      lettingAgent: true,
+      tenancies: {
+        where: { status: "active" },
+      },
+    },
+  });
+
+  const tenanciesStartedThisMonth = await db.tenancy.findMany({
+    where: {
+      propertyId: { in: propertyIds },
+      startDate: { gte: monthStart, lte: monthEnd },
+    },
+  });
+
+  let agentSetup = 0;
+  let agentManagement = 0;
+  let agentInventory = 0;
+
+  for (const prop of propertiesWithAgent) {
+    const agent = prop.lettingAgent;
+    if (!agent) continue;
+
+    if (agent.setupFee != null && toNum(agent.setupFee) > 0 && prop.lettingAgentAssignedAt) {
+      const assigned = prop.lettingAgentAssignedAt;
+      if (assigned >= monthStart && assigned <= monthEnd) {
+        agentSetup += toNum(agent.setupFee);
+      }
+    }
+
+    if (agent.managementFeeType && agent.managementFeeValue != null) {
+      if (agent.managementFeeType === "monthly") {
+        agentManagement += toNum(agent.managementFeeValue);
+      } else if (agent.managementFeeType === "percentage") {
+        let monthlyRent = 0;
+        for (const t of prop.tenancies) {
+          const amt = toNum(t.rentAmount);
+          if (t.rentFrequency === "monthly") monthlyRent += amt;
+          else if (t.rentFrequency === "weekly") monthlyRent += amt * (52 / 12);
+        }
+        agentManagement += monthlyRent * (toNum(agent.managementFeeValue) / 100);
+      }
+    }
+
+    if (agent.inventoryFee != null && toNum(agent.inventoryFee) > 0) {
+      const count = tenanciesStartedThisMonth.filter(
+        (t) => t.propertyId === prop.id
+      ).length;
+      agentInventory += count * toNum(agent.inventoryFee);
+    }
+  }
+
+  return {
+    agentSetup,
+    agentManagement,
+    agentInventory,
+    total: agentSetup + agentManagement + agentInventory,
+  };
+}
+
 export async function getDashboardSummary(
   userId: string,
   role: string = "portfolio_owner"
@@ -80,6 +162,7 @@ export async function getDashboardSummary(
       complianceDueSoon: 0,
       mortgageDue: 0,
       insuranceRenewal: 0,
+      agentCostsThisMonth: 0,
       netMonthlyProfit: 0,
     };
   }
@@ -152,6 +235,7 @@ export async function getDashboardSummary(
   const thisMonthEnd = endOfMonth(now);
   let mortgageDue = 0;
   let insuranceRenewal = 0;
+  let agentCostsThisMonth = 0;
   if (role !== "estate_agent") {
     for (const m of mortgagesThisMonth) {
       const due = m.nextPaymentDate;
@@ -165,9 +249,15 @@ export async function getDashboardSummary(
         insuranceRenewal += toNum(i.premium);
       }
     }
+    const agentCosts = await getMonthlyAgentCosts(
+      propertyIds,
+      thisMonthStart,
+      thisMonthEnd
+    );
+    agentCostsThisMonth = agentCosts.total;
   }
 
-  let totalMonthlyExpenses = mortgageDue + insuranceRenewal;
+  let totalMonthlyExpenses = mortgageDue + insuranceRenewal + agentCostsThisMonth;
   for (const e of monthlyExpenses) {
     totalMonthlyExpenses += toNum(e.amount);
   }
@@ -183,6 +273,7 @@ export async function getDashboardSummary(
     complianceDueSoon,
     mortgageDue,
     insuranceRenewal,
+    agentCostsThisMonth,
     netMonthlyProfit,
   };
 }
@@ -263,6 +354,8 @@ export async function getExpenseBreakdown(
     },
   });
 
+  const agentCosts = await getMonthlyAgentCosts(propertyIds, monthStart, monthEnd);
+
   const byCategory: Record<string, number> = {};
   for (const e of expenses) {
     const cat = e.category || "other";
@@ -274,6 +367,9 @@ export async function getExpenseBreakdown(
   byCategory["insurance"] =
     (byCategory["insurance"] ?? 0) +
     insurance.reduce((s, i) => s + toNum(i.premium), 0);
+  byCategory["agent_setup"] = (byCategory["agent_setup"] ?? 0) + agentCosts.agentSetup;
+  byCategory["agent_management"] = (byCategory["agent_management"] ?? 0) + agentCosts.agentManagement;
+  byCategory["agent_inventory"] = (byCategory["agent_inventory"] ?? 0) + agentCosts.agentInventory;
 
   const labels: Record<string, string> = {
     mortgage: "Mortgage",
@@ -281,11 +377,23 @@ export async function getExpenseBreakdown(
     maintenance: "Maintenance",
     compliance: "Compliance",
     management_fees: "Management",
+    agent_setup: "Agent setup",
+    agent_management: "Agent management",
+    agent_inventory: "Agent inventory",
     utilities: "Utilities",
     improvements: "Improvements",
     other: "Other",
   };
-  const ordered = ["mortgage", "insurance", "maintenance", "compliance", "other"];
+  const ordered = [
+    "mortgage",
+    "insurance",
+    "maintenance",
+    "compliance",
+    "agent_setup",
+    "agent_management",
+    "agent_inventory",
+    "other",
+  ];
   const rows: ExpenseBreakdownRow[] = [];
   let idx = 0;
   for (const cat of ordered) {
@@ -359,6 +467,50 @@ export async function getUpcomingPayments(
         property: i.property.address,
         amount: toNum(i.premium),
         date: i.renewalDate.toISOString().slice(0, 10),
+      });
+    }
+  }
+
+  const propertiesWithAgent = await db.property.findMany({
+    where: {
+      id: { in: propertyIds },
+      lettingAgentId: { not: null },
+    },
+    include: {
+      lettingAgent: true,
+      tenancies: { where: { status: "active" } },
+    },
+  });
+  for (const prop of propertiesWithAgent) {
+    const agent = prop.lettingAgent;
+    if (!agent || !agent.managementFeeType || agent.managementFeeValue == null)
+      continue;
+    let monthlyAmount = 0;
+    if (agent.managementFeeType === "monthly") {
+      monthlyAmount = toNum(agent.managementFeeValue);
+    } else if (agent.managementFeeType === "percentage") {
+      let monthlyRent = 0;
+      for (const t of prop.tenancies) {
+        const amt = toNum(t.rentAmount);
+        if (t.rentFrequency === "monthly") monthlyRent += amt;
+        else if (t.rentFrequency === "weekly") monthlyRent += amt * (52 / 12);
+      }
+      monthlyAmount = monthlyRent * (toNum(agent.managementFeeValue) / 100);
+    }
+    if (monthlyAmount <= 0) continue;
+    const monthStarts: Date[] = [];
+    let d = startOfMonth(now);
+    if (d < now) d = addMonths(d, 1);
+    while (d <= in90Days) {
+      monthStarts.push(d);
+      d = addMonths(d, 1);
+    }
+    for (const monthStart of monthStarts) {
+      rows.push({
+        type: "Agent management",
+        property: prop.address,
+        amount: monthlyAmount,
+        date: monthStart.toISOString().slice(0, 10),
       });
     }
   }

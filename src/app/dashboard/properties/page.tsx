@@ -24,6 +24,9 @@ export default async function PropertiesPage() {
     landlordCompanyId: string | null;
     portfolio: { id: string; name: string };
     estateAgent: { id: string; name: string } | null;
+    lettingAgentId: string | null;
+    lettingAgentAssignedAt: Date | null;
+    lettingAgent: { id: string; name: string } | null;
     landlordCompany: { id: string; name: string } | null;
   }> = [];
 
@@ -35,6 +38,7 @@ export default async function PropertiesPage() {
         include: {
           portfolio: { select: { id: true, name: true } },
           estateAgent: { select: { id: true, name: true } },
+          lettingAgent: { select: { id: true, name: true } },
           landlordCompany: { select: { id: true, name: true } },
         },
         orderBy: { address: "asc" },
@@ -64,6 +68,7 @@ export default async function PropertiesPage() {
       include: {
         portfolio: { select: { id: true, name: true } },
         estateAgent: { select: { id: true, name: true } },
+        lettingAgent: { select: { id: true, name: true } },
         landlordCompany: { select: { id: true, name: true } },
       },
       orderBy: { address: "asc" },
@@ -82,6 +87,13 @@ export default async function PropertiesPage() {
     portfolio: p.portfolio,
     estateAgentId: p.estateAgentId,
     estateAgent: p.estateAgent,
+    lettingAgentId: p.lettingAgentId,
+    lettingAgentAssignedAt: p.lettingAgentAssignedAt
+      ? p.lettingAgentAssignedAt instanceof Date
+        ? p.lettingAgentAssignedAt.toISOString().slice(0, 10)
+        : String(p.lettingAgentAssignedAt).slice(0, 10)
+      : null,
+    lettingAgent: p.lettingAgent,
     ownershipType: p.ownershipType ?? "sole",
     landlordCompanyId: p.landlordCompanyId,
     landlordCompany: p.landlordCompany,
@@ -104,6 +116,15 @@ export default async function PropertiesPage() {
         })
       : [];
 
+  const lettingAgents =
+    user.role === "portfolio_owner" || user.role === "admin"
+      ? await db.lettingAgent.findMany({
+          where: { userId: user.id },
+          select: { id: true, name: true, company: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
+
   return (
     <div className="space-y-8">
       <div>
@@ -116,6 +137,7 @@ export default async function PropertiesPage() {
         initialProperties={properties}
         portfolios={portfolios}
         estateAgents={estateAgents}
+        lettingAgents={lettingAgents}
         landlordCompanies={landlordCompanies}
         userRole={user.role}
       />

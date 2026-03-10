@@ -17,6 +17,7 @@ import {
   MessageSquare,
   LogOut,
   UserCog,
+  HandCoins,
 } from "lucide-react";
 
 import {
@@ -52,6 +53,7 @@ const ownerNavItems = [
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/sms", label: "SMS", icon: MessageSquare },
   { href: "/dashboard/estate-agents", label: "Estate Agents", icon: UserCog },
+  { href: "/dashboard/letting-agents", label: "Letting Agents", icon: HandCoins },
   { href: "/dashboard/landlord-companies", label: "Landlord Companies", icon: Briefcase },
 ];
 

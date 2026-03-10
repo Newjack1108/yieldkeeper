@@ -41,6 +41,9 @@ type Property = {
   portfolio: { name: string };
   estateAgentId?: string | null;
   estateAgent?: { id: string; name: string } | null;
+  lettingAgentId?: string | null;
+  lettingAgentAssignedAt?: string | null;
+  lettingAgent?: { id: string; name: string } | null;
   ownershipType?: string;
   landlordCompanyId?: string | null;
   landlordCompany?: { id: string; name: string } | null;
@@ -52,16 +55,20 @@ type EstateAgent = { id: string; name: string; company: string | null };
 
 type LandlordCompany = { id: string; name: string; registrationNumber: string };
 
+type LettingAgent = { id: string; name: string; company: string | null };
+
 export function PropertiesPageClient({
   initialProperties,
   portfolios,
   estateAgents,
+  lettingAgents,
   landlordCompanies,
   userRole,
 }: {
   initialProperties: Property[];
   portfolios: Portfolio[];
   estateAgents: EstateAgent[];
+  lettingAgents: LettingAgent[];
   landlordCompanies: LandlordCompany[];
   userRole: string;
 }) {
@@ -75,6 +82,8 @@ export function PropertiesPageClient({
   const [propertyType, setPropertyType] = useState("");
   const [occupancyStatus, setOccupancyStatus] = useState("vacant");
   const [estateAgentId, setEstateAgentId] = useState<string | null>(null);
+  const [lettingAgentId, setLettingAgentId] = useState<string | null>(null);
+  const [lettingAgentAssignedAt, setLettingAgentAssignedAt] = useState("");
   const [ownershipType, setOwnershipType] = useState<"sole" | "limited_company">("sole");
   const [landlordCompanyId, setLandlordCompanyId] = useState<string | null>(null);
 
@@ -89,6 +98,12 @@ export function PropertiesPageClient({
       setPropertyType(editing.propertyType ?? "");
       setOccupancyStatus(editing.occupancyStatus ?? "vacant");
       setEstateAgentId(editing.estateAgentId ?? null);
+      setLettingAgentId(editing.lettingAgentId ?? null);
+      setLettingAgentAssignedAt(
+        editing.lettingAgentAssignedAt
+          ? editing.lettingAgentAssignedAt.slice(0, 10)
+          : new Date().toISOString().slice(0, 10)
+      );
       setOwnershipType((editing.ownershipType as "sole" | "limited_company") ?? "sole");
       setLandlordCompanyId(editing.landlordCompanyId ?? null);
     } else {
@@ -96,6 +111,8 @@ export function PropertiesPageClient({
       setPropertyType("");
       setOccupancyStatus("vacant");
       setEstateAgentId(null);
+      setLettingAgentId(null);
+      setLettingAgentAssignedAt(new Date().toISOString().slice(0, 10));
       setOwnershipType("sole");
       setLandlordCompanyId(null);
     }
@@ -124,6 +141,8 @@ export function PropertiesPageClient({
         : undefined,
       occupancyStatus: formData.get("occupancyStatus") || undefined,
       estateAgentId: estateAgentId || undefined,
+      lettingAgentId: lettingAgentId || undefined,
+      lettingAgentAssignedAt: lettingAgentId && lettingAgentAssignedAt ? lettingAgentAssignedAt : null,
       ownershipType: ownershipType,
       landlordCompanyId: ownershipType === "limited_company" ? landlordCompanyId || undefined : null,
       notes: formData.get("notes") || undefined,
@@ -143,6 +162,8 @@ export function PropertiesPageClient({
             currentValue: payload.currentValue,
             occupancyStatus: payload.occupancyStatus,
             estateAgentId: payload.estateAgentId ?? null,
+            lettingAgentId: payload.lettingAgentId ?? null,
+            lettingAgentAssignedAt: payload.lettingAgentAssignedAt ?? null,
             ownershipType: payload.ownershipType,
             landlordCompanyId: payload.landlordCompanyId ?? null,
             notes: payload.notes,
@@ -267,6 +288,52 @@ export function PropertiesPageClient({
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+              {isOwner && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="lettingAgentId">Letting Agent</Label>
+                    <Select
+                      value={lettingAgentId ?? "none"}
+                      onValueChange={(v) => {
+                        setLettingAgentId(v === "none" ? null : v);
+                        if (v !== "none" && !lettingAgentAssignedAt) {
+                          setLettingAgentAssignedAt(new Date().toISOString().slice(0, 10));
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="lettingAgentId" className="h-9 w-full">
+                        <SelectValue placeholder="Select letting agent (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {lettingAgents.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name} {a.company ? `(${a.company})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Fee structure is used for dashboard cost calculations
+                    </p>
+                  </div>
+                  {lettingAgentId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="lettingAgentAssignedAt">Agent Assigned Date</Label>
+                      <Input
+                        id="lettingAgentAssignedAt"
+                        name="lettingAgentAssignedAt"
+                        type="date"
+                        value={lettingAgentAssignedAt}
+                        onChange={(e) => setLettingAgentAssignedAt(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used for setup fee timing (one-time in this month)
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {isOwner && (
                 <div className="space-y-2">
@@ -436,6 +503,7 @@ export function PropertiesPageClient({
                 <TableHead>Ownership</TableHead>
                 <TableHead>Portfolio</TableHead>
                 {isOwner && <TableHead>Estate Agent</TableHead>}
+                {isOwner && <TableHead>Letting Agent</TableHead>}
                 <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -456,6 +524,9 @@ export function PropertiesPageClient({
                   <TableCell>{p.portfolio?.name ?? "-"}</TableCell>
                   {isOwner && (
                     <TableCell>{p.estateAgent?.name ?? "-"}</TableCell>
+                  )}
+                  {isOwner && (
+                    <TableCell>{p.lettingAgent?.name ?? "-"}</TableCell>
                   )}
                   <TableCell>
                     <div className="flex gap-1">

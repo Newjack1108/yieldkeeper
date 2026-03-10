@@ -26,6 +26,7 @@ model User {
   estateAgent           EstateAgent?
   estateAgentsCreated   EstateAgent[] @relation("EstateAgentCreatedBy")
   landlordCompanies   LandlordCompany[]
+  lettingAgents        LettingAgent[]
 }
 
 // Lucia v3 session
@@ -84,6 +85,28 @@ model LandlordCompany {
   @@index([userId])
 }
 
+model LettingAgent {
+  id                  String    @id @default(cuid())
+  userId              String
+  name                String
+  company             String?
+  email               String?
+  phone               String?
+  setupFee            Decimal?  @db.Decimal(12, 2)
+  managementFeeType   String?   // monthly, percentage
+  managementFeeValue  Decimal?  @db.Decimal(12, 2)
+  inventoryFee        Decimal?  @db.Decimal(12, 2)
+  renewalFee          Decimal?  @db.Decimal(12, 2)
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  properties Property[]
+
+  @@index([userId])
+}
+
 model Property {
   id                 String    @id @default(cuid())
   portfolioId        String
@@ -95,14 +118,17 @@ model Property {
   bedrooms           Int?
   notes              String?   @db.Text
   occupancyStatus    String?   @default("vacant") // occupied, vacant, partial
-  estateAgentId      String?
-  ownershipType      String    @default("sole") // sole, limited_company
-  landlordCompanyId  String?
+  estateAgentId        String?
+  lettingAgentId       String?
+  lettingAgentAssignedAt DateTime?
+  ownershipType        String    @default("sole") // sole, limited_company
+  landlordCompanyId    String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   portfolio         Portfolio           @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   estateAgent       EstateAgent?        @relation(fields: [estateAgentId], references: [id], onDelete: SetNull)
+  lettingAgent      LettingAgent?       @relation(fields: [lettingAgentId], references: [id], onDelete: SetNull)
   landlordCompany   LandlordCompany?    @relation(fields: [landlordCompanyId], references: [id], onDelete: SetNull)
   units             Unit[]
   mortgages         Mortgage[]
@@ -116,6 +142,7 @@ model Property {
 
   @@index([portfolioId])
   @@index([estateAgentId])
+  @@index([lettingAgentId])
   @@index([landlordCompanyId])
 }
 
