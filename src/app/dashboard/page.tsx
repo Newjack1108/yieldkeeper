@@ -22,6 +22,7 @@ import {
   getUpcomingPayments,
   getMaintenanceAlerts,
   getComplianceAlerts,
+  getInspectionAlerts,
 } from "@/lib/dashboard";
 
 export default async function DashboardPage() {
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
     upcomingPayments,
     maintenanceAlerts,
     complianceAlerts,
+    inspectionAlerts,
   ] = await Promise.all([
     getDashboardSummary(user.id),
     getMonthlyIncome(user.id),
@@ -42,6 +44,7 @@ export default async function DashboardPage() {
     getUpcomingPayments(user.id),
     getMaintenanceAlerts(user.id),
     getComplianceAlerts(user.id),
+    getInspectionAlerts(user.id),
   ]);
   return (
     <div className="space-y-8">
@@ -205,10 +208,46 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Compliance Alerts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Compliance Due Soon</CardTitle>
+      {/* Inspections & Compliance */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Inspections Due</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Scheduled inspections in the next 90 days
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {inspectionAlerts.length === 0 ? (
+                <li className="text-sm text-muted-foreground">
+                  No upcoming inspections
+                </li>
+              ) : (
+                inspectionAlerts.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-medium capitalize">{item.type}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.property}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{item.scheduledDate}</p>
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Compliance Due Soon</CardTitle>
           <p className="text-sm text-muted-foreground">
             Certificates and checks expiring in the next 90 days
           </p>
@@ -234,9 +273,10 @@ export default async function DashboardPage() {
                 </div>
               </li>
             ))}
-          </ul>
-        </CardContent>
-      </Card>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

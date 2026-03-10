@@ -48,6 +48,14 @@ export type ComplianceAlertRow = {
   status: string;
 };
 
+export type InspectionAlertRow = {
+  id: string;
+  property: string;
+  type: string;
+  scheduledDate: string;
+  status: string;
+};
+
 function toNum(d: { toNumber?: () => number } | null | undefined): number {
   if (!d) return 0;
   if (typeof d === "number") return d;
@@ -419,5 +427,44 @@ export async function getComplianceAlerts(
     type: c.type.toUpperCase(),
     expiryDate: c.expiryDate.toISOString().slice(0, 10),
     status: "due_soon",
+  }));
+}
+
+export async function getInspectionAlerts(
+  userId: string
+): Promise<InspectionAlertRow[]> {
+  const portfolios = await db.portfolio.findMany({
+    where: { userId },
+    include: { properties: true },
+  });
+  const propertyIds = portfolios.flatMap((p) =>
+    p.properties.map((prop) => prop.id)
+  );
+  if (propertyIds.length === 0) return [];
+
+  const now = new Date();
+  const in90Days = addDays(now, 90);
+
+  const items = await db.inspection.findMany({
+    where: {
+      propertyId: { in: propertyIds },
+      status: "scheduled",
+      OR: [
+        { scheduledDate: { gte: now, lte: in90Days } },
+        { nextDueDate: { gte: now, lte: in90Days } },
+      ],
+    },
+    include: { property: true },
+    orderBy: { scheduledDate: "asc" },
+    take: 10,
+  });
+  return items.map((i) => ({
+    id: i.id,
+    property: i.property.address,
+    type: i.type,
+    scheduledDate: (
+      i.scheduledDate ?? i.nextDueDate ?? new Date()
+    ).toISOString().slice(0, 10),
+    status: i.status ?? "scheduled",
   }));
 }

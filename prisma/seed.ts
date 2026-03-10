@@ -374,6 +374,67 @@ async function main() {
     }),
   ]);
 
+  // Create inspections
+  const inspections = await Promise.all([
+    prisma.inspection.upsert({
+      where: { id: "insp-1" },
+      update: {},
+      create: {
+        id: "insp-1",
+        propertyId: properties[0].id,
+        tenancyId: tenancies[0].id,
+        type: "landlord",
+        scheduledDate: new Date(now.getFullYear(), now.getMonth() + 1, 15),
+        completedDate: null,
+        inspector: "John Smith Surveyors",
+        nextDueDate: new Date(now.getFullYear(), now.getMonth() + 7, 15),
+        overallRating: null,
+        status: "scheduled",
+      },
+    }),
+    prisma.inspection.upsert({
+      where: { id: "insp-2" },
+      update: {},
+      create: {
+        id: "insp-2",
+        propertyId: properties[1].id,
+        tenancyId: tenancies[1].id,
+        type: "self",
+        scheduledDate: new Date(now.getFullYear(), now.getMonth() - 1, 10),
+        completedDate: new Date(now.getFullYear(), now.getMonth() - 1, 12),
+        inspector: null,
+        nextDueDate: null,
+        overallRating: 4,
+        status: "completed",
+      },
+    }),
+  ]);
+
+  // Add inspection items and actions for first inspection
+  await prisma.inspectionItem.upsert({
+    where: { id: "insp-item-1" },
+    update: {},
+    create: {
+      id: "insp-item-1",
+      inspectionId: inspections[0].id,
+      roomName: "Living room",
+      conditionRating: 4,
+      notes: "Minor wear on carpet",
+    },
+  });
+  await prisma.inspectionAction.upsert({
+    where: { id: "insp-action-1" },
+    update: {},
+    create: {
+      id: "insp-action-1",
+      inspectionId: inspections[0].id,
+      description: "Replace smoke alarm battery",
+      dueDate: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+      completedDate: null,
+      status: "pending",
+    },
+  });
+
   // Create SMS templates
   await prisma.smsTemplate.upsert({
     where: { type: "rent_reminder" },
