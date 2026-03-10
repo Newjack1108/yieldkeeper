@@ -88,8 +88,58 @@ src/
 
 ## Deploy to Railway
 
-1. Connect your GitHub repo
-2. Add PostgreSQL service
-3. Add a new service for the Next.js app
-4. Set environment variables (DATABASE_URL from Postgres, Clerk keys)
-5. Deploy
+### 1. Create GitHub repository and push
+
+If you haven't already, create a new repo at [github.com/new](https://github.com/new) named `YieldKeeper`. Do not initialize with README.
+
+Then set the remote (replace `YOUR_USERNAME` with your GitHub username) and push:
+
+```bash
+git remote set-url origin https://github.com/YOUR_USERNAME/YieldKeeper.git
+git push -u origin main
+```
+
+### 2. Create Railway project
+
+1. Go to [railway.app](https://railway.app) and sign in (GitHub recommended)
+2. Click **New Project** > **Deploy from GitHub repo**
+3. Select your `YieldKeeper` repository
+
+### 3. Add PostgreSQL
+
+1. In the project, click **+ New** > **Database** > **PostgreSQL**
+2. Railway provisions Postgres and exposes `DATABASE_URL`
+
+### 4. Configure the Next.js service
+
+1. Click the **Next.js service** (from GitHub)
+2. Go to **Variables** and add:
+   - `DATABASE_URL` – Click **Add reference** and select your PostgreSQL service's `DATABASE_URL` (or use `${{Postgres.DATABASE_URL}}`)
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` – from [Clerk Dashboard](https://dashboard.clerk.com)
+   - `CLERK_SECRET_KEY` – from Clerk Dashboard
+   - `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` = `/dashboard` (optional)
+   - `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` = `/dashboard` (optional)
+
+3. In **Settings**:
+   - **Build Command:** `npm run build` (includes `prisma generate`)
+   - **Start Command:** `npm run start`
+
+### 5. Run migrations
+
+After the first successful build, run migrations:
+
+```bash
+railway run npx prisma migrate deploy
+```
+
+Or add **Pre-deploy command** in Settings > Deploy: `npx prisma migrate deploy`
+
+### 6. Seed (optional)
+
+```bash
+railway run npx prisma db seed
+```
+
+### 7. Clerk production URLs
+
+In Clerk Dashboard > **Configure** > **Paths**, add your Railway URL (e.g. `https://yieldkeeper.up.railway.app`) to allowed redirect URLs.
