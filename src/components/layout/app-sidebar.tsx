@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Building2,
@@ -11,9 +11,9 @@ import {
   Wrench,
   ShieldCheck,
   FileText,
+  LogOut,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +26,13 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { UserButton } from "@clerk/nextjs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -39,8 +45,17 @@ const navItems = [
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
 ];
 
-export function AppSidebar() {
+type User = { id: string; email: string; name: string | null; role: string };
+
+export function AppSidebar({ user }: { user: User }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await fetch("/api/auth/sign-out", { method: "POST" });
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <Sidebar>
@@ -70,12 +85,23 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">
-        <div className="flex items-center gap-2">
-          <UserButton />
-          <span className="text-sm text-muted-foreground truncate">
-            Account
-          </span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <span className="text-sm font-medium truncate">
+                  {user.name || user.email}
+                </span>
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );

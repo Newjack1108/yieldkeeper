@@ -1,24 +1,32 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hash } from "@node-rs/argon2";
 
 const connectionString = process.env.DATABASE_URL!;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 const DEMO_USER_ID = "demo-user-seed-123";
+const DEMO_PASSWORD = "password123";
 
 async function main() {
   console.log("Seeding database...");
 
-  // Create demo user (will be replaced by Clerk users in production)
+  const passwordHash = await hash(DEMO_PASSWORD, {
+    memoryCost: 19456,
+    timeCost: 2,
+  });
+
+  // Create demo user (email/password auth; sign in with demo@yieldkeeper.com / password123)
   const user = await prisma.user.upsert({
     where: { id: DEMO_USER_ID },
-    update: {},
+    update: { passwordHash },
     create: {
       id: DEMO_USER_ID,
       email: "demo@yieldkeeper.com",
       name: "Demo Landlord",
+      passwordHash,
       role: "portfolio_owner",
     },
   });

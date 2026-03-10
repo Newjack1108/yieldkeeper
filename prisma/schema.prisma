@@ -9,17 +9,29 @@ datasource db {
   provider = "postgresql"
 }
 
-// User synced from Clerk
+// User (Lucia v3 + app attributes)
 model User {
-  id        String    @id
-  email     String?
-  name      String?
-  role      String    @default("portfolio_owner") // admin, portfolio_owner, manager
-  createdAt DateTime  @default(now())
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  role         String    @default("portfolio_owner") // admin, portfolio_owner, manager
+  createdAt    DateTime  @default(now())
 
+  sessions    Session[]
   portfolios  Portfolio[]
   tenants     Tenant[]
   contractors Contractor[]
+}
+
+// Lucia v3 session
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Portfolio {

@@ -1,17 +1,29 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifyRequestOrigin } from "lucia";
 
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks(.*)",
-]);
+const publicPaths = ["/", "/sign-in", "/sign-up", "/api/webhooks"];
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
+function isPublicPath(pathname: string): boolean {
+  return publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  if (request.method === "GET") {
+    return NextResponse.next();
   }
-});
+  const originHeader = request.headers.get("Origin");
+  const hostHeader =
+    request.headers.get("Host") ?? request.headers.get("X-Forwarded-Host");
+  if (
+    originHeader &&
+    hostHeader &&
+    !verifyRequestOrigin(originHeader, [hostHeader])
+  ) {
+    return new NextResponse(null, { status: 403 });
+  }
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

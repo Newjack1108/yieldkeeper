@@ -1,33 +1,38 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { db } from "./db";
+import { cookies } from "next/headers";
+import { cache } from "react";
+import { lucia } from "@/auth";
+import type { Session, User } from "lucia";
 
-/**
- * Get or create the current user in the database (synced from Clerk).
- * Call this in server components and API routes.
- */
-export async function getOrCreateUser() {
-  const { userId } = await auth();
-  if (!userId) return null;
+export const validateRequest = cache(
+  async (): Promise<
+    { user: User; session: Session } | { user: null; session: null }
+  > => {
+    const sessionId = (await cookies()).get(lucia.sessionCookieName)?.value ?? null;
+    if (!sessionId) {
+      return { user: null, session: null };
+    }
 
-  let user = await db.user.findUnique({ where: { id: userId } });
-  if (user) return user;
-
-  const clerkUser = await currentUser();
-  if (!clerkUser) return null;
-
-  const email = clerkUser.emailAddresses[0]?.emailAddress ?? null;
-  const name =
-    clerkUser.firstName || clerkUser.lastName
-      ? [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ")
-      : clerkUser.username ?? null;
-
-  user = await db.user.create({
-    data: {
-      id: userId,
-      email,
-      name,
-      role: "portfolio_owner",
-    },
-  });
-  return user;
-}
+    const result = await lucia.validateSession(sessionId);
+    try {
+      if (result.session?.fresh) {
+        const sessionCookie = lucia.createSessionCookie(result.session.id);
+        (await cookies()).set(
+          sessionCookie.name,
+          sessionCookie.value,
+          sessionCookie.attributes
+        );
+      }
+      if (!result.session) {
+        const sessionCookie = lucia.createBlankSessionCookie();
+        (await cookies()).set(
+          sessionCookie.name,
+          sessionCookie.value,
+          sessionCookie.attributes
+        );
+      }
+    } catch {
+      // Next.js may throw when setting cookies during render
+    }
+    return result;
+  }
+);
