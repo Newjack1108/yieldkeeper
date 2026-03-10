@@ -23,17 +23,22 @@ const renderLabel = ({
   percent,
   name,
 }: {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
   percent?: number;
-  name: string;
+  name?: string;
 }) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos((-midAngle * Math.PI) / 180);
-  const y = cy + radius * Math.sin((-midAngle * Math.PI) / 180);
+  const x0 = cx ?? 0;
+  const y0 = cy ?? 0;
+  const angle = midAngle ?? 0;
+  const inner = innerRadius ?? 0;
+  const outer = outerRadius ?? 0;
+  const radius = inner + (outer - inner) * 0.5;
+  const x = x0 + radius * Math.cos((-angle * Math.PI) / 180);
+  const y = y0 + radius * Math.sin((-angle * Math.PI) / 180);
   return (
     <text
       x={x}
@@ -43,7 +48,7 @@ const renderLabel = ({
       dominantBaseline="central"
       fontSize={12}
     >
-      {`${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+      {`${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
     </text>
   );
 };
