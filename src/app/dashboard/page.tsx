@@ -14,16 +14,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardKpiCard } from "@/components/dashboard/dashboard-kpi-card";
 import { IncomeChart } from "@/components/dashboard/income-chart";
 import { ExpenseChart } from "@/components/dashboard/expense-chart";
+import { validateRequest } from "@/lib/auth";
 import {
-  mockDashboardSummary,
-  mockMonthlyIncome,
-  mockExpenseBreakdown,
-  mockUpcomingPayments,
-  mockMaintenanceAlerts,
-  mockComplianceAlerts,
-} from "@/lib/mock-dashboard";
+  getDashboardSummary,
+  getMonthlyIncome,
+  getExpenseBreakdown,
+  getUpcomingPayments,
+  getMaintenanceAlerts,
+  getComplianceAlerts,
+} from "@/lib/dashboard";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { user } = await validateRequest();
+  if (!user) return null;
+
+  const [
+    dashboardSummary,
+    monthlyIncome,
+    expenseBreakdown,
+    upcomingPayments,
+    maintenanceAlerts,
+    complianceAlerts,
+  ] = await Promise.all([
+    getDashboardSummary(user.id),
+    getMonthlyIncome(user.id),
+    getExpenseBreakdown(user.id),
+    getUpcomingPayments(user.id),
+    getMaintenanceAlerts(user.id),
+    getComplianceAlerts(user.id),
+  ]);
   return (
     <div className="space-y-8">
       <div>
@@ -37,55 +56,55 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardKpiCard
           title="Total Properties"
-          value={mockDashboardSummary.totalProperties}
+          value={dashboardSummary.totalProperties}
           icon={Building2}
         />
         <DashboardKpiCard
           title="Occupied Units"
-          value={mockDashboardSummary.occupiedUnits}
+          value={dashboardSummary.occupiedUnits}
           icon={Users}
         />
         <DashboardKpiCard
           title="Monthly Income"
-          value={mockDashboardSummary.monthlyRentIncome}
+          value={dashboardSummary.monthlyRentIncome}
           icon={PoundSterling}
           status="healthy"
           format="currency"
         />
         <DashboardKpiCard
           title="Outstanding Arrears"
-          value={mockDashboardSummary.outstandingArrears}
+          value={dashboardSummary.outstandingArrears}
           icon={AlertTriangle}
           status="alert"
           format="currency"
         />
         <DashboardKpiCard
           title="Open Maintenance"
-          value={mockDashboardSummary.maintenanceOpen}
+          value={dashboardSummary.maintenanceOpen}
           icon={Wrench}
           status="warning"
         />
         <DashboardKpiCard
           title="Compliance Due"
-          value={mockDashboardSummary.complianceDueSoon}
+          value={dashboardSummary.complianceDueSoon}
           icon={ShieldCheck}
           status="warning"
         />
         <DashboardKpiCard
           title="Mortgage Due"
-          value={mockDashboardSummary.mortgageDue}
+          value={dashboardSummary.mortgageDue}
           icon={Calendar}
           format="currency"
         />
         <DashboardKpiCard
           title="Insurance Renewal"
-          value={mockDashboardSummary.insuranceRenewal}
+          value={dashboardSummary.insuranceRenewal}
           icon={FileCheck}
           format="currency"
         />
         <DashboardKpiCard
           title="Net Monthly Profit"
-          value={mockDashboardSummary.netMonthlyProfit}
+          value={dashboardSummary.netMonthlyProfit}
           icon={TrendingUp}
           status="healthy"
           format="currency"
@@ -102,7 +121,7 @@ export default function DashboardPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <IncomeChart data={mockMonthlyIncome} />
+            <IncomeChart data={monthlyIncome} />
           </CardContent>
         </Card>
         <Card>
@@ -113,7 +132,7 @@ export default function DashboardPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <ExpenseChart data={mockExpenseBreakdown} />
+            <ExpenseChart data={expenseBreakdown} />
           </CardContent>
         </Card>
       </div>
@@ -129,7 +148,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {mockUpcomingPayments.map((item) => (
+              {upcomingPayments.map((item) => (
                 <li
                   key={`${item.type}-${item.property}`}
                   className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
@@ -159,7 +178,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {mockMaintenanceAlerts.map((item) => (
+              {maintenanceAlerts.map((item) => (
                 <li
                   key={item.id}
                   className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
@@ -196,7 +215,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {mockComplianceAlerts.map((item) => (
+            {complianceAlerts.map((item) => (
               <li
                 key={item.id}
                 className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"

@@ -15,6 +15,13 @@ const CHART_COLORS = [
 ];
 
 export function ExpenseChart({ data }: ExpenseChartProps) {
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+        No expense data this month
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height={280}>
       <PieChart>
