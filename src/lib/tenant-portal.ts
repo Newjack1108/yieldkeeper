@@ -8,6 +8,38 @@ export type ContactInfo = {
   type: "letting_agent" | "estate_agent" | "landlord";
 };
 
+export type NextRentDue = {
+  dueDate: Date;
+  amountDue: number;
+};
+
+export async function getNextRentDueForTenant(
+  loginUserId: string
+): Promise<NextRentDue | null> {
+  const tenant = await db.tenant.findUnique({
+    where: { loginUserId },
+    select: { id: true },
+  });
+  if (!tenant) return null;
+
+  const schedule = await db.rentSchedule.findFirst({
+    where: {
+      tenancy: {
+        tenantId: tenant.id,
+        status: { in: ["active", "ending_soon"] },
+      },
+      status: { in: ["pending", "overdue"] },
+    },
+    orderBy: { dueDate: "asc" },
+  });
+
+  if (!schedule) return null;
+  return {
+    dueDate: schedule.dueDate,
+    amountDue: Number(schedule.amountDue),
+  };
+}
+
 export async function getTenantForLoginUser(loginUserId: string) {
   return db.tenant.findUnique({
     where: { loginUserId },
