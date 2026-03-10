@@ -11,6 +11,7 @@ import {
   Wrench,
   ShieldCheck,
   FileText,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ const navItems = [
   { href: "/dashboard/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/dashboard/compliance", label: "Compliance", icon: ShieldCheck },
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
+  { href: "/dashboard/sms", label: "SMS", icon: MessageSquare },
 ];
 
 type User = { id: string; email: string; name: string | null; role: string };

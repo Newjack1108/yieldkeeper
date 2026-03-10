@@ -436,16 +436,40 @@ async function main() {
   });
 
   // Create SMS templates
-  await prisma.smsTemplate.upsert({
-    where: { type: "rent_reminder" },
-    update: {},
-    create: {
+  const smsTemplates = [
+    {
       type: "rent_reminder",
       content:
         "Hi {{tenantName}}. Your rent of £{{amount}} is due tomorrow for {{address}}.",
-      isActive: true,
     },
-  });
+    {
+      type: "overdue_alert",
+      content:
+        "Hi {{tenantName}}. Your rent for {{address}} is now overdue. Please arrange payment as soon as possible.",
+    },
+    {
+      type: "inspection_request",
+      content:
+        "Hi {{tenantName}}. We need to arrange a property inspection at {{address}}. Please reply with your availability.",
+    },
+    {
+      type: "maintenance_ack",
+      content:
+        "Hi {{tenantName}}. We've received your maintenance request for {{address}} and will be in touch shortly.",
+    },
+    {
+      type: "maintenance_complete",
+      content:
+        "Hi {{tenantName}}. The maintenance work at {{address}} is now complete. Please let us know if you have any concerns.",
+    },
+  ];
+  for (const t of smsTemplates) {
+    await prisma.smsTemplate.upsert({
+      where: { type: t.type },
+      update: {},
+      create: { ...t, isActive: true },
+    });
+  }
 
   console.log("Seed completed successfully!");
 }
