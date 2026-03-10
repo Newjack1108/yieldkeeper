@@ -18,6 +18,8 @@ import {
   Plus,
   ExternalLink,
   Users,
+  Send,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -148,11 +150,18 @@ function buildActivityTimeline(profile: TenantProfile): ActivityItem[] {
 
 export function TenantProfileClient({
   initialProfile,
+  canInvite = false,
+  canResendInvite = false,
 }: {
   initialProfile: TenantProfile;
+  canInvite?: boolean;
+  canResendInvite?: boolean;
 }) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
+  const [inviteLinkUrl, setInviteLinkUrl] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [occupantOpen, setOccupantOpen] = useState(false);
@@ -371,6 +380,37 @@ export function TenantProfileClient({
     }
   }
 
+  async function handleInviteToPortal() {
+    setInviteLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tenants/${tenant.id}/invite`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to create invite");
+        return;
+      }
+      setInviteLinkUrl(data.setPasswordUrl ?? null);
+      setInviteLinkOpen(true);
+      router.refresh();
+    } catch {
+      setError("An error occurred");
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLinkUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteLinkUrl);
+    } catch {
+      setError("Failed to copy");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -418,14 +458,31 @@ export function TenantProfileClient({
                 <p className="text-sm text-muted-foreground mt-2">{tenant.notes}</p>
               )}
             </div>
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
-              <DialogTrigger>
-                <Button variant="outline" size="sm" type="button">
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+            <div className="flex items-center gap-2">
+              {(canInvite || canResendInvite) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={handleInviteToPortal}
+                  disabled={inviteLoading}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  {inviteLoading
+                    ? "Sending..."
+                    : canResendInvite
+                      ? "Resend invite"
+                      : "Invite to portal"}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              )}
+              <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogTrigger>
+                  <Button variant="outline" size="sm" type="button">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Edit tenant</DialogTitle>
                 </DialogHeader>
@@ -474,7 +531,7 @@ export function TenantProfileClient({
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={loading}>
                       Cancel
                     </Button>
                     <Button type="submit" disabled={loading}>
@@ -579,7 +636,38 @@ export function TenantProfileClient({
                 </form>
               </DialogContent>
             </Dialog>
+            <Dialog open={inviteLinkOpen} onOpenChange={setInviteLinkOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Share invite link</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Share this link with your tenant to set their password. It expires in 7 days.
+                </p>
+                {inviteLinkUrl && (
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={inviteLinkUrl}
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={copyInviteLink}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <Button onClick={() => setInviteLinkOpen(false)}>
+                  Close
+                </Button>
+              </DialogContent>
+            </Dialog>
           </div>
+        </div>
         </CardHeader>
         {totalArrears > 0 && (
           <CardContent className="pt-0">

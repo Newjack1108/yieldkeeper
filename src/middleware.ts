@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyRequestOrigin } from "lucia";
 
-const publicPaths = ["/", "/sign-in", "/sign-up", "/api/webhooks"];
+const publicPaths = [
+  "/",
+  "/sign-in",
+  "/sign-up",
+  "/tenant/set-password",
+  "/api/webhooks",
+  "/api/tenant-portal/set-password",
+];
 
 function isPublicPath(pathname: string): boolean {
   return publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"));

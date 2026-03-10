@@ -15,7 +15,7 @@ model User {
   email        String    @unique
   name         String?
   passwordHash String?
-  role         String    @default("portfolio_owner") // admin, portfolio_owner, manager, estate_agent
+  role         String    @default("portfolio_owner") // admin, portfolio_owner, manager, estate_agent, tenant
   createdAt    DateTime  @default(now())
 
   sessions           Session[]
@@ -27,6 +27,7 @@ model User {
   estateAgentsCreated   EstateAgent[] @relation("EstateAgentCreatedBy")
   landlordCompanies   LandlordCompany[]
   lettingAgents        LettingAgent[]
+  tenantsWithLogin     Tenant[]         @relation("TenantLogin")
 }
 
 // Lucia v3 session
@@ -194,6 +195,7 @@ model InsurancePolicy {
 model Tenant {
   id               String   @id @default(cuid())
   userId           String
+  loginUserId      String?  @unique
   name             String
   email            String?
   phone            String?
@@ -202,12 +204,28 @@ model Tenant {
   createdAt        DateTime @default(now())
 
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginUser     User?                @relation("TenantLogin", fields: [loginUserId], references: [id], onDelete: SetNull)
   tenancies     Tenancy[]
   smsLogs       SmsLog[]
   documents     Document[]
   activityNotes TenantActivityNote[]
+  invites       TenantInvite[]
 
   @@index([userId])
+  @@index([loginUserId])
+}
+
+model TenantInvite {
+  id        String   @id @default(cuid())
+  tenantId  String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([token])
 }
 
 model Tenancy {

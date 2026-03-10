@@ -17,7 +17,19 @@ export default async function TenantProfilePage({
 
   return (
     <div className="space-y-6">
-      <TenantProfileClient initialProfile={profile} />
+      <TenantProfileClient
+        initialProfile={profile}
+        canInvite={
+          (user.role === "portfolio_owner" || user.role === "admin") &&
+          !!profile.tenant.email &&
+          !profile.tenant.loginUserId
+        }
+        canResendInvite={
+          (user.role === "portfolio_owner" || user.role === "admin") &&
+          !!profile.tenant.email &&
+          !!profile.tenant.loginUserId
+        }
+      />
     </div>
   );
 }

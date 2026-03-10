@@ -45,10 +45,13 @@ export async function POST(request: Request) {
     const session = await lucia.createSession(existingUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
 
+    const redirectTo =
+      existingUser.role === "tenant" ? "/tenant" : "/dashboard";
+
     return new NextResponse(null, {
       status: 302,
       headers: {
-        Location: "/dashboard",
+        Location: redirectTo,
         "Set-Cookie": sessionCookie.serialize(),
       },
     });

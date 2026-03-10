@@ -98,6 +98,7 @@ export async function getTenantProfile(tenantId: string, userId: string) {
       emergencyContact: tenant.emergencyContact,
       notes: tenant.notes,
       createdAt: tenant.createdAt.toISOString(),
+      loginUserId: tenant.loginUserId,
     },
     tenancies: tenanciesWithArrears.map((t) => ({
       id: t.id,
