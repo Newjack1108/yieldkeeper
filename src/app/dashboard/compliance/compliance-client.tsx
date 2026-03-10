@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ComplianceRow = {
   id: string;
@@ -93,10 +100,21 @@ export function CompliancePageClient({
   const [editing, setEditing] = useState<ComplianceRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState("");
+  const [type, setType] = useState("other");
 
   useEffect(() => {
     setCompliance(initialCompliance);
   }, [initialCompliance]);
+
+  useEffect(() => {
+    if (editing) {
+      setType(editing.type ?? "other");
+    } else {
+      setPropertyId("");
+      setType("other");
+    }
+  }, [editing, open]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -226,20 +244,22 @@ export function CompliancePageClient({
               {!editing ? (
                 <div className="space-y-2">
                   <Label htmlFor="propertyId">Property</Label>
-                  <select
-                    id="propertyId"
+                  <Select
                     name="propertyId"
-                    required
-                    disabled={properties.length === 0}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    value={propertyId}
+                    onValueChange={(v) => setPropertyId(v ?? "")}
                   >
-                    <option value="">Select property</option>
-                    {properties.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.address}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-9 w-full" disabled={properties.length === 0}>
+                      <SelectValue placeholder="Select property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -251,18 +271,18 @@ export function CompliancePageClient({
               )}
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
-                <select
-                  id="type"
-                  name="type"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  defaultValue={editing?.type ?? "other"}
-                >
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <Select name="type" value={type} onValueChange={(v) => setType(v ?? "other")}>
+                  <SelectTrigger id="type" className="h-9 w-full">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

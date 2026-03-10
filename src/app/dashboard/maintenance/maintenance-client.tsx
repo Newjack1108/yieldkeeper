@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type MaintenanceRow = {
   id: string;
@@ -116,10 +123,30 @@ export function MaintenancePageClient({
   const [editing, setEditing] = useState<MaintenanceRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState("");
+  const [tenancyId, setTenancyId] = useState("");
+  const [contractorId, setContractorId] = useState("");
+  const [priority, setPriority] = useState("medium");
+  const [status, setStatus] = useState("reported");
 
   useEffect(() => {
     setMaintenance(initialMaintenance);
   }, [initialMaintenance]);
+
+  useEffect(() => {
+    if (editing) {
+      setTenancyId(editing.tenancyId ?? "");
+      setContractorId(editing.contractorId ?? "");
+      setPriority(editing.priority ?? "medium");
+      setStatus(editing.status ?? "reported");
+    } else {
+      setPropertyId("");
+      setTenancyId("");
+      setContractorId("");
+      setPriority("medium");
+      setStatus("reported");
+    }
+  }, [editing, open]);
 
   const tenanciesForProperty = (propertyId: string) =>
     tenancies.filter((t) => t.propertyId === propertyId);
@@ -258,35 +285,42 @@ export function MaintenancePageClient({
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="propertyId">Property</Label>
-                    <select
-                      id="propertyId"
+                    <Select
                       name="propertyId"
-                      required
-                      disabled={properties.length === 0}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value={propertyId}
+                      onValueChange={(v) => setPropertyId(v ?? "")}
                     >
-                      <option value="">Select property</option>
-                      {properties.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.address}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
+                        <SelectValue placeholder="Select property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tenancyId">Tenancy (optional)</Label>
-                    <select
-                      id="tenancyId"
+                    <Select
                       name="tenancyId"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value={tenancyId}
+                      onValueChange={(v) => setTenancyId(v ?? "")}
                     >
-                      <option value="">None</option>
-                      {tenancies.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="tenancyId" className="h-9 w-full">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {tenancies.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </>
               ) : (
@@ -297,38 +331,46 @@ export function MaintenancePageClient({
                   </p>
                   <div className="space-y-2">
                     <Label htmlFor="tenancyId">Tenancy (optional)</Label>
-                    <select
-                      id="tenancyId"
+                    <Select
                       name="tenancyId"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                      defaultValue={editing?.tenancyId ?? ""}
+                      value={tenancyId}
+                      onValueChange={(v) => setTenancyId(v ?? "")}
                     >
-                      <option value="">None</option>
-                      {tenanciesForProperty(editing.propertyId).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="tenancyId" className="h-9 w-full">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {tenanciesForProperty(editing.propertyId).map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}
               <div className="space-y-2">
                 <Label htmlFor="contractorId">Contractor (optional)</Label>
-                <select
-                  id="contractorId"
+                <Select
                   name="contractorId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  defaultValue={editing?.contractorId ?? ""}
+                  value={contractorId}
+                  onValueChange={(v) => setContractorId(v ?? "")}
                 >
-                  <option value="">None</option>
-                  {contractors.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.tradeType ? ` (${c.tradeType})` : ""}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="contractorId" className="h-9 w-full">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {contractors.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {c.tradeType ? ` (${c.tradeType})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
@@ -352,33 +394,41 @@ export function MaintenancePageClient({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="priority">Priority</Label>
-                  <select
-                    id="priority"
+                  <Select
                     name="priority"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={editing?.priority ?? "medium"}
+                    value={priority}
+                    onValueChange={(v) => setPriority(v ?? "medium")}
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="emergency">Emergency</option>
-                  </select>
+                    <SelectTrigger id="priority" className="h-9 w-full">
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
+                  <Select
                     name="status"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={editing?.status ?? "reported"}
+                    value={status}
+                    onValueChange={(v) => setStatus(v ?? "reported")}
                   >
-                    <option value="reported">Reported</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="quoted">Quoted</option>
-                    <option value="approved">Approved</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                    <SelectTrigger id="status" className="h-9 w-full">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

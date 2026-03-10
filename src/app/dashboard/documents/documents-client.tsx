@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type DocumentRow = {
   id: string;
@@ -157,31 +164,31 @@ export function DocumentsPageClient({
         <div className="flex flex-wrap gap-4">
           <div className="space-y-1">
             <Label htmlFor="propertyFilter" className="text-xs">Filter by property</Label>
-            <select
-              id="propertyFilter"
-              value={propertyFilter}
-              onChange={(e) => setPropertyFilter(e.target.value)}
-              className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-            >
-              <option value="">All properties</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.address}</option>
-              ))}
-            </select>
+            <Select value={propertyFilter} onValueChange={(v) => setPropertyFilter(v ?? "")}>
+              <SelectTrigger id="propertyFilter" className="h-9 w-48">
+                <SelectValue placeholder="All properties" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All properties</SelectItem>
+                {properties.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="typeFilter" className="text-xs">Filter by type</Label>
-            <select
-              id="typeFilter"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-            >
-              <option value="">All types</option>
-              {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v ?? "")}>
+              <SelectTrigger id="typeFilter" className="h-9 w-40">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All types</SelectItem>
+                {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -191,58 +198,58 @@ export function DocumentsPageClient({
             <div className="flex flex-col gap-2">
               <div className="space-y-1">
                 <Label htmlFor="uploadType" className="text-xs">Type</Label>
-                <select
-                  id="uploadType"
-                  value={uploadType}
-                  onChange={(e) => setUploadType(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                >
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                <Select value={uploadType} onValueChange={(v) => setUploadType(v ?? "other")}>
+                  <SelectTrigger id="uploadType" className="h-9 w-full">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="uploadPropertyId" className="text-xs">Property (optional)</Label>
-                <select
-                  id="uploadPropertyId"
-                  value={uploadPropertyId}
-                  onChange={(e) => setUploadPropertyId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                >
-                  <option value="">None</option>
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>{p.address}</option>
-                  ))}
-                </select>
+                <Select value={uploadPropertyId} onValueChange={(v) => setUploadPropertyId(v ?? "")}>
+                  <SelectTrigger id="uploadPropertyId" className="h-9 w-full">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {properties.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="uploadMaintenanceId" className="text-xs">Maintenance (optional)</Label>
-                <select
-                  id="uploadMaintenanceId"
-                  value={uploadMaintenanceId}
-                  onChange={(e) => setUploadMaintenanceId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                >
-                  <option value="">None</option>
-                  {maintenance.map((m) => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </select>
+                <Select value={uploadMaintenanceId} onValueChange={(v) => setUploadMaintenanceId(v ?? "")}>
+                  <SelectTrigger id="uploadMaintenanceId" className="h-9 w-full">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {maintenance.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="uploadComplianceId" className="text-xs">Compliance (optional)</Label>
-                <select
-                  id="uploadComplianceId"
-                  value={uploadComplianceId}
-                  onChange={(e) => setUploadComplianceId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                >
-                  <option value="">None</option>
-                  {compliance.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
+                <Select value={uploadComplianceId} onValueChange={(v) => setUploadComplianceId(v ?? "")}>
+                  <SelectTrigger id="uploadComplianceId" className="h-9 w-full">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {compliance.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <CldUploadWidget
                 uploadPreset={uploadPreset}

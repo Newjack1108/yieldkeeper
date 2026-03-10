@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -57,9 +64,32 @@ export function RentPageClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [addPropertyId, setAddPropertyId] = useState("");
+  const [addTenantId, setAddTenantId] = useState("");
+  const [addRentFrequency, setAddRentFrequency] = useState("monthly");
+  const [paymentTenancyId, setPaymentTenancyId] = useState("");
+  const [paymentRentScheduleId, setPaymentRentScheduleId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+
   useEffect(() => {
     setTenancies(initialTenancies);
   }, [initialTenancies]);
+
+  useEffect(() => {
+    if (!addOpen) {
+      setAddPropertyId("");
+      setAddTenantId("");
+      setAddRentFrequency("monthly");
+    }
+  }, [addOpen]);
+
+  useEffect(() => {
+    if (!paymentOpen) {
+      setPaymentTenancyId("");
+      setPaymentRentScheduleId("");
+      setPaymentMethod("");
+    }
+  }, [paymentOpen]);
 
   async function handleAddTenancy(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -187,37 +217,41 @@ export function RentPageClient({
               )}
               <div className="space-y-2">
                 <Label htmlFor="propertyId">Property</Label>
-                <select
-                  id="propertyId"
+                <Select
                   name="propertyId"
-                  required
-                  disabled={properties.length === 0}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={addPropertyId}
+                  onValueChange={(v) => setAddPropertyId(v ?? "")}
                 >
-                  <option value="">Select property</option>
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.address}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.address}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tenantId">Tenant</Label>
-                <select
-                  id="tenantId"
+                <Select
                   name="tenantId"
-                  required
-                  disabled={tenants.length === 0}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={addTenantId}
+                  onValueChange={(v) => setAddTenantId(v ?? "")}
                 >
-                  <option value="">Select tenant</option>
-                  {tenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="tenantId" className="h-9 w-full" disabled={tenants.length === 0}>
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -248,14 +282,19 @@ export function RentPageClient({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rentFrequency">Frequency</Label>
-                  <select
-                    id="rentFrequency"
+                  <Select
                     name="rentFrequency"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    value={addRentFrequency}
+                    onValueChange={(v) => setAddRentFrequency(v ?? "monthly")}
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
+                    <SelectTrigger id="rentFrequency" className="h-9 w-full">
+                      <SelectValue placeholder="Frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -308,38 +347,46 @@ export function RentPageClient({
               )}
               <div className="space-y-2">
                 <Label htmlFor="tenancyId">Tenancy</Label>
-                <select
-                  id="tenancyId"
+                <Select
                   name="tenancyId"
-                  required
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={paymentTenancyId}
+                  onValueChange={(v) => setPaymentTenancyId(v ?? "")}
                 >
-                  <option value="">Select tenancy</option>
-                  {tenancies.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.propertyAddress} — {t.tenantName}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="tenancyId" className="h-9 w-full">
+                    <SelectValue placeholder="Select tenancy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenancies.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.propertyAddress} — {t.tenantName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="rentScheduleId">Apply to schedule (optional)</Label>
-                <select
-                  id="rentScheduleId"
+                <Select
                   name="rentScheduleId"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={paymentRentScheduleId}
+                  onValueChange={(v) => setPaymentRentScheduleId(v ?? "")}
                 >
-                  <option value="">— General payment —</option>
-                  {tenancies.flatMap((t) =>
-                    t.schedules
-                      .filter((s) => s.status !== "paid")
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {t.propertyAddress} — {s.dueDate} (£{s.amountDue}) — {s.status}
-                        </option>
-                      ))
-                  )}
-                </select>
+                  <SelectTrigger id="rentScheduleId" className="h-9 w-full">
+                    <SelectValue placeholder="— General payment —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">— General payment —</SelectItem>
+                    {tenancies.flatMap((t) =>
+                      t.schedules
+                        .filter((s) => s.status !== "paid")
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {t.propertyAddress} — {s.dueDate} (£{s.amountDue}) — {s.status}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -366,19 +413,24 @@ export function RentPageClient({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="method">Method</Label>
-                <select
-                  id="method"
+                <Select
                   name="method"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={paymentMethod}
+                  onValueChange={(v) => setPaymentMethod(v ?? "")}
                 >
-                  <option value="">— Select —</option>
-                  <option value="bank_transfer">Bank transfer</option>
-                  <option value="standing_order">Standing order</option>
-                  <option value="direct_debit">Direct debit</option>
-                  <option value="cash">Cash</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="other">Other</option>
-                </select>
+                  <SelectTrigger id="method" className="h-9 w-full">
+                    <SelectValue placeholder="— Select —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">— Select —</SelectItem>
+                    <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                    <SelectItem value="standing_order">Standing order</SelectItem>
+                    <SelectItem value="direct_debit">Direct debit</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>

@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type InspectionItem = {
   id: string;
@@ -80,9 +87,40 @@ export function InspectionsPageClient({
   const [addItemLoading, setAddItemLoading] = useState(false);
   const [addActionLoading, setAddActionLoading] = useState(false);
 
+  const [propertyId, setPropertyId] = useState("");
+  const [tenancyId, setTenancyId] = useState("");
+  const [type, setType] = useState("landlord");
+  const [overallRating, setOverallRating] = useState("");
+  const [status, setStatus] = useState("scheduled");
+  const [conditionRating, setConditionRating] = useState("");
+  const [actionStatus, setActionStatus] = useState("pending");
+
   useEffect(() => {
     setInspections(initialInspections);
   }, [initialInspections]);
+
+  useEffect(() => {
+    if (editing) {
+      setTenancyId(editing.tenancyId ?? "");
+      setType(editing.type ?? "landlord");
+      setOverallRating(editing.overallRating != null ? String(editing.overallRating) : "");
+      setStatus(editing.status ?? "scheduled");
+    } else {
+      setPropertyId("");
+      setTenancyId("");
+      setType("landlord");
+      setOverallRating("");
+      setStatus("scheduled");
+    }
+  }, [editing, open]);
+
+  useEffect(() => {
+    if (!addItemInspectionId) setConditionRating("");
+  }, [addItemInspectionId]);
+
+  useEffect(() => {
+    if (!addActionInspectionId) setActionStatus("pending");
+  }, [addActionInspectionId]);
 
   const tenanciesForProperty = (propertyId: string) =>
     tenancies.filter((t) => t.propertyId === propertyId);
@@ -260,66 +298,77 @@ export function InspectionsPageClient({
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="propertyId">Property</Label>
-                    <select
-                      id="propertyId"
+                    <Select
                       name="propertyId"
-                      required
-                      disabled={properties.length === 0}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value={propertyId}
+                      onValueChange={(v) => setPropertyId(v ?? "")}
                     >
-                      <option value="">Select property</option>
-                      {properties.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.address}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="propertyId" className="h-9 w-full" disabled={properties.length === 0}>
+                        <SelectValue placeholder="Select property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tenancyId">Tenancy (optional)</Label>
-                    <select
-                      id="tenancyId"
+                    <Select
                       name="tenancyId"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      value={tenancyId}
+                      onValueChange={(v) => setTenancyId(v ?? "")}
                     >
-                      <option value="">None</option>
-                      {tenancies.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="tenancyId" className="h-9 w-full">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {tenancies.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </>
               ) : (
                 <div className="space-y-2">
                   <Label htmlFor="tenancyId">Tenancy (optional)</Label>
-                  <select
-                    id="tenancyId"
+                  <Select
                     name="tenancyId"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={editing?.tenancyId ?? ""}
+                    value={tenancyId}
+                    onValueChange={(v) => setTenancyId(v ?? "")}
                   >
-                    <option value="">None</option>
-                    {tenanciesForProperty(editing.propertyId).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="tenancyId" className="h-9 w-full">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {tenanciesForProperty(editing.propertyId).map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
-                <select
-                  id="type"
-                  name="type"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  defaultValue={editing?.type ?? "landlord"}
-                >
-                  <option value="landlord">Landlord</option>
-                  <option value="self">Self</option>
-                </select>
+                <Select name="type" value={type} onValueChange={(v) => setType(v ?? "landlord")}>
+                  <SelectTrigger id="type" className="h-9 w-full">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="landlord">Landlord</SelectItem>
+                    <SelectItem value="self">Self</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -362,33 +411,37 @@ export function InspectionsPageClient({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="overallRating">Overall rating (1–5)</Label>
-                  <select
-                    id="overallRating"
+                  <Select
                     name="overallRating"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={editing?.overallRating ?? ""}
+                    value={overallRating}
+                    onValueChange={(v) => setOverallRating(v ?? "")}
                   >
-                    <option value="">—</option>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="overallRating" className="h-9 w-full">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">—</SelectItem>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <select
-                  id="status"
-                  name="status"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  defaultValue={editing?.status ?? "scheduled"}
-                >
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                <Select name="status" value={status} onValueChange={(v) => setStatus(v ?? "scheduled")}>
+                  <SelectTrigger id="status" className="h-9 w-full">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => closeDialog()}>
@@ -500,18 +553,23 @@ export function InspectionsPageClient({
                                     </div>
                                     <div className="space-y-2">
                                       <Label htmlFor="conditionRating">Condition (1–5)</Label>
-                                      <select
-                                        id="conditionRating"
+                                      <Select
                                         name="conditionRating"
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                        value={conditionRating}
+                                        onValueChange={(v) => setConditionRating(v ?? "")}
                                       >
-                                        <option value="">—</option>
-                                        {[1, 2, 3, 4, 5].map((n) => (
-                                          <option key={n} value={n}>
-                                            {n}
-                                          </option>
-                                        ))}
-                                      </select>
+                                        <SelectTrigger id="conditionRating" className="h-9 w-full">
+                                          <SelectValue placeholder="—" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="">—</SelectItem>
+                                          {[1, 2, 3, 4, 5].map((n) => (
+                                            <SelectItem key={n} value={String(n)}>
+                                              {n}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                     <div className="space-y-2">
                                       <Label htmlFor="notes">Notes</Label>
@@ -600,15 +658,20 @@ export function InspectionsPageClient({
                                         />
                                       </div>
                                       <div className="space-y-2">
-                                        <Label htmlFor="status">Status</Label>
-                                        <select
-                                          id="status"
+                                        <Label htmlFor="actionStatus">Status</Label>
+                                        <Select
                                           name="status"
-                                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                          value={actionStatus}
+                                          onValueChange={(v) => setActionStatus(v ?? "pending")}
                                         >
-                                          <option value="pending">Pending</option>
-                                          <option value="completed">Completed</option>
-                                        </select>
+                                          <SelectTrigger id="actionStatus" className="h-9 w-full">
+                                            <SelectValue placeholder="Status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="pending">Pending</SelectItem>
+                                            <SelectItem value="completed">Completed</SelectItem>
+                                          </SelectContent>
+                                        </Select>
                                       </div>
                                     </div>
                                     <div className="space-y-2">

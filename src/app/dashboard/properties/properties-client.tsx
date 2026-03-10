@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Property = {
   id: string;
@@ -45,13 +52,28 @@ export function PropertiesPageClient({
 }) {
   const router = useRouter();
   const [properties, setProperties] = useState(initialProperties);
-  useEffect(() => {
-    setProperties(initialProperties);
-  }, [initialProperties]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? "");
+  const [propertyType, setPropertyType] = useState("");
+  const [occupancyStatus, setOccupancyStatus] = useState("vacant");
+
+  useEffect(() => {
+    setProperties(initialProperties);
+  }, [initialProperties]);
+
+  useEffect(() => {
+    if (editing) {
+      setPropertyType(editing.propertyType ?? "");
+      setOccupancyStatus(editing.occupancyStatus ?? "vacant");
+    } else {
+      setPortfolioId(portfolios[0]?.id ?? "");
+      setPropertyType("");
+      setOccupancyStatus("vacant");
+    }
+  }, [editing, open, portfolios]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -146,8 +168,6 @@ export function PropertiesPageClient({
     setError(null);
   }
 
-  const defaultPortfolio = portfolios[0]?.id;
-
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -171,18 +191,22 @@ export function PropertiesPageClient({
               {!editing && (
                 <div className="space-y-2">
                   <Label htmlFor="portfolioId">Portfolio</Label>
-                  <select
-                    id="portfolioId"
+                  <Select
                     name="portfolioId"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={defaultPortfolio}
+                    value={portfolioId}
+                    onValueChange={(v) => setPortfolioId(v ?? "")}
                   >
-                    {portfolios.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="portfolioId" className="h-9 w-full">
+                      <SelectValue placeholder="Portfolio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {portfolios.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div className="space-y-2">
@@ -198,17 +222,21 @@ export function PropertiesPageClient({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="propertyType">Type</Label>
-                  <select
-                    id="propertyType"
+                  <Select
                     name="propertyType"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={editing?.propertyType ?? ""}
+                    value={propertyType}
+                    onValueChange={(v) => setPropertyType(v ?? "")}
                   >
-                    <option value="">Select</option>
-                    <option value="flat">Flat</option>
-                    <option value="house">House</option>
-                    <option value="HMO">HMO</option>
-                  </select>
+                    <SelectTrigger id="propertyType" className="h-9 w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Select</SelectItem>
+                      <SelectItem value="flat">Flat</SelectItem>
+                      <SelectItem value="house">House</SelectItem>
+                      <SelectItem value="HMO">HMO</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bedrooms">Bedrooms</Label>
@@ -248,16 +276,20 @@ export function PropertiesPageClient({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="occupancyStatus">Occupancy</Label>
-                <select
-                  id="occupancyStatus"
+                <Select
                   name="occupancyStatus"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  defaultValue={editing?.occupancyStatus ?? "vacant"}
+                  value={occupancyStatus}
+                  onValueChange={(v) => setOccupancyStatus(v ?? "vacant")}
                 >
-                  <option value="vacant">Vacant</option>
-                  <option value="occupied">Occupied</option>
-                  <option value="partial">Partial</option>
-                </select>
+                  <SelectTrigger id="occupancyStatus" className="h-9 w-full">
+                    <SelectValue placeholder="Occupancy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vacant">Vacant</SelectItem>
+                    <SelectItem value="occupied">Occupied</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>

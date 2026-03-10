@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type SmsLog = {
   id: string;
@@ -184,20 +191,18 @@ export function SmsPageClient({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="tenantId">Tenant</Label>
-              <select
-                id="tenantId"
-                value={tenantId}
-                onChange={(e) => setTenantId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                required
-              >
-                <option value="">Select tenant</option>
-                {tenants.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.phone})
-                  </option>
-                ))}
-              </select>
+              <Select value={tenantId} onValueChange={(v) => setTenantId(v ?? "")}>
+                <SelectTrigger id="tenantId" className="h-9 w-full">
+                  <SelectValue placeholder="Select tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.phone})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {tenants.length === 0 && (
                 <p className="text-xs text-muted-foreground">
                   No tenants with phone numbers. Add a phone in Tenants.
@@ -206,22 +211,25 @@ export function SmsPageClient({
             </div>
             <div className="space-y-2">
               <Label htmlFor="templateId">Template</Label>
-              <select
-                id="templateId"
+              <Select
                 value={templateId}
-                onChange={(e) => {
-                  setTemplateId(e.target.value);
-                  if (!e.target.value) setCustomBody("");
+                onValueChange={(v) => {
+                  setTemplateId(v ?? "");
+                  if (!v) setCustomBody("");
                 }}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
               >
-                <option value="">Custom message</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {MESSAGE_TYPE_LABELS[t.type] ?? t.type}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="templateId" className="h-9 w-full">
+                  <SelectValue placeholder="Custom message" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Custom message</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {MESSAGE_TYPE_LABELS[t.type] ?? t.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
