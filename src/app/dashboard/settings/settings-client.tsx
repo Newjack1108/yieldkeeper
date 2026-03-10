@@ -8,6 +8,7 @@ import {
   HandCoins,
   MessageSquare,
   Pencil,
+  Plus,
   ExternalLink,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,6 +33,14 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
+function formatTemplateLabel(type: string): string {
+  if (MESSAGE_TYPE_LABELS[type]) return MESSAGE_TYPE_LABELS[type];
+  return type
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 type Template = {
   id: string;
   type: string;
@@ -53,9 +62,13 @@ export function SettingsPageClient({
   const router = useRouter();
   const [templates, setTemplates] = useState(initialTemplates);
   const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [editContent, setEditContent] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [addName, setAddName] = useState("");
+  const [addContent, setAddContent] = useState("");
+  const [addActive, setAddActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +82,43 @@ export function SettingsPageClient({
     setEditActive(template.isActive);
     setError(null);
     setEditOpen(true);
+  }
+
+  function openAddDialog() {
+    setAddName("");
+    setAddContent("");
+    setAddActive(true);
+    setError(null);
+    setAddOpen(true);
+  }
+
+  async function handleAddTemplate(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/sms/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: addName.trim(),
+          content: addContent.trim(),
+          isActive: addActive,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error?.name?.[0] ?? data.error ?? "Failed to create");
+        return;
+      }
+      setTemplates((prev) => [...prev, data].sort((a, b) => a.type.localeCompare(b.type)));
+      setAddOpen(false);
+      router.refresh();
+    } catch {
+      setError("An error occurred");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSaveTemplate(e: React.FormEvent) {
@@ -202,11 +252,19 @@ export function SettingsPageClient({
       <TabsContent value="templates" className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>SMS templates</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Edit the message templates used when sending SMS to tenants.
-              Variables: {"{{tenantName}}"}, {"{{amount}}"}, {"{{address}}"}
-            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>SMS templates</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Edit the message templates used when sending SMS to tenants.
+                  Variables: {"{{tenantName}}"}, {"{{amount}}"}, {"{{address}}"}
+                </p>
+              </div>
+              <Button onClick={openAddDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add template
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -218,7 +276,7 @@ export function SettingsPageClient({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        {MESSAGE_TYPE_LABELS[t.type] ?? t.type}
+                        {formatTemplateLabel(t.type)}
                       </span>
                       {!t.isActive && (
                         <Badge variant="secondary">Inactive</Badge>
@@ -244,9 +302,7 @@ export function SettingsPageClient({
                 <DialogHeader>
                   <DialogTitle>
                     Edit{" "}
-                    {editingTemplate
-                      ? MESSAGE_TYPE_LABELS[editingTemplate.type] ?? editingTemplate.type
-                      : ""}
+                    {editingTemplate ? formatTemplateLabel(editingTemplate.type) : ""}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSaveTemplate} className="space-y-4">
@@ -290,6 +346,73 @@ export function SettingsPageClient({
                     </Button>
                     <Button type="submit" disabled={loading}>
                       {loading ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add template</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddTemplate} className="space-y-4">
+                  {error && (
+                    <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="addName">Template name</Label>
+                    <Input
+                      id="addName"
+                      value={addName}
+                      onChange={(e) => setAddName(e.target.value)}
+                      placeholder="e.g. Move out notice"
+                      maxLength={64}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used to identify this template in the SMS send dropdown
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="addContent">Message content</Label>
+                    <textarea
+                      id="addContent"
+                      value={addContent}
+                      onChange={(e) => setAddContent(e.target.value)}
+                      placeholder="Hi {{tenantName}}. Your message here..."
+                      className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                      maxLength={2000}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Variables: {"{{tenantName}}"}, {"{{amount}}"}, {"{{address}}"} — {addContent.length}/2000 characters
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="addActive"
+                      checked={addActive}
+                      onChange={(e) => setAddActive(e.target.checked)}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <Label htmlFor="addActive">Active (visible in SMS send)</Label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setAddOpen(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Creating..." : "Create"}
                     </Button>
                   </div>
                 </form>

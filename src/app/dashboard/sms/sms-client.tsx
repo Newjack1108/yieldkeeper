@@ -45,14 +45,7 @@ type Tenant = {
 };
 type Template = { id: string; type: string; content: string; isActive: boolean };
 
-const MESSAGE_TYPE_LABELS: Record<string, string> = {
-  rent_reminder: "Rent reminder",
-  overdue_alert: "Overdue alert",
-  inspection_request: "Inspection request",
-  maintenance_ack: "Maintenance ack",
-  maintenance_complete: "Maintenance complete",
-  custom: "Custom",
-};
+import { formatTemplateLabel } from "@/components/sms/send-sms-dialog";
 
 function replaceVars(
   template: string,
@@ -238,7 +231,7 @@ export function SmsPageClient({
                   { value: "", label: "Custom message" },
                   ...templates.map((t) => ({
                     value: t.id,
-                    label: MESSAGE_TYPE_LABELS[t.type] ?? t.type,
+                    label: formatTemplateLabel(t.type),
                   })),
                 ]}
               >
@@ -249,7 +242,7 @@ export function SmsPageClient({
                   <SelectItem value="">Custom message</SelectItem>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {MESSAGE_TYPE_LABELS[t.type] ?? t.type}
+                      {formatTemplateLabel(t.type)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -315,7 +308,7 @@ export function SmsPageClient({
                       )}
                     </TableCell>
                     <TableCell>
-                      {MESSAGE_TYPE_LABELS[log.messageType] ?? log.messageType}
+                      {formatTemplateLabel(log.messageType)}
                     </TableCell>
                     <TableCell className="max-w-[240px] truncate text-muted-foreground">
                       {log.body}

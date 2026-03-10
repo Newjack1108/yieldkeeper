@@ -28,6 +28,14 @@ export const MESSAGE_TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
+export function formatTemplateLabel(type: string): string {
+  if (MESSAGE_TYPE_LABELS[type]) return MESSAGE_TYPE_LABELS[type];
+  return type
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function replaceVars(
   template: string,
   vars: { tenantName?: string; amount?: string; address?: string }
@@ -164,7 +172,7 @@ export function SendSmsDialog({
                 <SelectItem value="">Custom message</SelectItem>
                 {templates.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
-                    {MESSAGE_TYPE_LABELS[t.type] ?? t.type}
+                    {formatTemplateLabel(t.type)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -6,14 +6,7 @@ import { isSmsTestMode } from "@/lib/sms";
 
 const sendSchema = z.object({
   tenantId: z.string().min(1),
-  messageType: z.enum([
-    "rent_reminder",
-    "overdue_alert",
-    "inspection_request",
-    "maintenance_ack",
-    "maintenance_complete",
-    "custom",
-  ]),
+  messageType: z.string().min(1).max(64),
   body: z.string().min(1).max(1600),
   propertyId: z.string().optional().nullable(),
 });

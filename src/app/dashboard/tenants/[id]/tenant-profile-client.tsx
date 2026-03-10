@@ -55,14 +55,7 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-const MESSAGE_TYPE_LABELS: Record<string, string> = {
-  rent_reminder: "Rent reminder",
-  overdue_alert: "Overdue alert",
-  inspection_request: "Inspection request",
-  maintenance_ack: "Maintenance ack",
-  maintenance_complete: "Maintenance complete",
-  custom: "Custom",
-};
+import { formatTemplateLabel } from "@/components/sms/send-sms-dialog";
 
 const ACTIVITY_NOTE_TYPE_LABELS: Record<string, string> = {
   call: "Call",
@@ -893,7 +886,7 @@ export function TenantProfileClient({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mb-1">
-                        {MESSAGE_TYPE_LABELS[s.messageType] ?? s.messageType} → {s.toPhone}
+                        {formatTemplateLabel(s.messageType)} → {s.toPhone}
                       </p>
                       <p className="text-sm whitespace-pre-wrap">{s.body}</p>
                     </div>
