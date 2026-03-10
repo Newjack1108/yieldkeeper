@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Building2,
   Users,
@@ -259,21 +260,26 @@ export default async function DashboardPage() {
                 key={item.id}
                 className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
               >
-                <div>
-                  <p className="font-medium">{item.type}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.property}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">Expires {item.expiryDate}</p>
-                  <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                    Due soon
-                  </span>
-                </div>
+                <Link
+                  href="/dashboard/compliance"
+                  className="flex flex-1 items-center justify-between hover:opacity-80"
+                >
+                  <div>
+                    <p className="font-medium">{item.type}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.property}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">Expires {item.expiryDate}</p>
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      Due soon
+                    </span>
+                  </div>
+                </Link>
               </li>
             ))}
-            </ul>
+          </ul>
           </CardContent>
         </Card>
       </div>
