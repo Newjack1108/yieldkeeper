@@ -40,3 +40,16 @@ export const QUARTERLY_CHECKLIST_QUESTIONS: QuarterlyChecklistQuestion[] = [
 export type PreChecklistAnswers = Record<string, string | boolean>;
 
 export type QuarterlyChecklistAnswers = Record<string, string | boolean>;
+
+/** Predefined rooms for inspection sheets */
+export const INSPECTION_ROOM_TEMPLATE: string[] = [
+  "Living room",
+  "Kitchen",
+  "Bedroom 1",
+  "Bedroom 2",
+  "Bedroom 3",
+  "Bathroom",
+  "Hallway",
+  "Exterior",
+  "Other",
+];

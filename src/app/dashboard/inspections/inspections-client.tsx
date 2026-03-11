@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Copy, Check, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -549,6 +550,14 @@ export function InspectionsPageClient({
                     <TableCell>{i.overallRating ?? "—"}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
+                        <Link
+                          href={`/dashboard/inspections/${i.id}`}
+                          title="Open sheet"
+                        >
+                          <Button variant="ghost" size="icon-sm">
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Button
                           variant="ghost"
                           size="icon-sm"
