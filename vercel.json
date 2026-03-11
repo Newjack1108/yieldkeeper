@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/quarterly-checklists",
-      "schedule": "0 9 1 * *"
-    }
-  ]
-}

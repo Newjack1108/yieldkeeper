@@ -143,6 +143,32 @@ export function InspectionsPageClient({
     setTimeout(() => setCopiedToken(null), 2000);
   }
 
+  const [sendingLinkId, setSendingLinkId] = useState<string | null>(null);
+
+  async function handleSendPreChecklistLink(inspection: InspectionRow) {
+    if (!inspection.tenancyId || inspection.type !== "landlord") return;
+    setSendingLinkId(inspection.id);
+    try {
+      const res = await fetch(`/api/inspections/${inspection.id}/send-prechecklist-link`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error ?? "Failed to generate link");
+        return;
+      }
+      const { link } = await res.json();
+      await navigator.clipboard.writeText(link);
+      setCopiedToken(inspection.id);
+      setTimeout(() => setCopiedToken(null), 2000);
+      router.refresh();
+    } catch {
+      alert("An error occurred");
+    } finally {
+      setSendingLinkId(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -544,29 +570,49 @@ export function InspectionsPageClient({
                     <TableRow key={`${i.id}-expanded`}>
                       <TableCell colSpan={7} className="bg-muted/30 p-4">
                         <div className="space-y-4">
-                          {i.status === "pending_prechecklist" && i.preChecklistToken && !i.preChecklist && (
+                          {i.type === "landlord" && i.tenancyId && !i.preChecklist && (
                             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                              <p className="mb-2 text-sm font-medium">Pre-inspection checklist required</p>
+                              <p className="mb-2 text-sm font-medium">Pre-inspection checklist</p>
                               <p className="mb-3 text-sm text-muted-foreground">
-                                Send this link to the tenant to complete the pre-checklist before the inspection.
+                                {i.preChecklistToken
+                                  ? "Send this link to the tenant to complete the pre-checklist before the inspection."
+                                  : "Generate a link to send to the tenant. They must complete the pre-checklist before the inspection can proceed."}
                               </p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCopyPreChecklistLink(i)}
-                              >
-                                {copiedToken === i.id ? (
-                                  <>
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Copy pre-checklist link
-                                  </>
-                                )}
-                              </Button>
+                              {i.preChecklistToken ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCopyPreChecklistLink(i)}
+                                >
+                                  {copiedToken === i.id ? (
+                                    <>
+                                      <Check className="mr-2 h-4 w-4" />
+                                      Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Copy pre-checklist link
+                                    </>
+                                  )}
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSendPreChecklistLink(i)}
+                                  disabled={sendingLinkId === i.id}
+                                >
+                                  {sendingLinkId === i.id ? (
+                                    "Generating..."
+                                  ) : (
+                                    <>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Send link to tenant
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             </div>
                           )}
                           {i.preChecklist && (

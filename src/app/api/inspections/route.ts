@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { validateRequest } from "@/lib/auth";
 import { getPropertyIdsForUser } from "@/lib/estate-agent";
 import { z } from "zod";
-import { randomBytes } from "crypto";
 
 const createSchema = z.object({
   propertyId: z.string().min(1),
@@ -78,16 +77,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const isLandlordWithTenancy =
-    data.type === "landlord" && data.tenancyId;
-  const preChecklistToken = isLandlordWithTenancy
-    ? randomBytes(32).toString("hex")
-    : null;
-  const preChecklistExpiresAt = preChecklistToken
-    ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-    : null;
-  const defaultStatus = isLandlordWithTenancy ? "pending_prechecklist" : "scheduled";
-
   const inspection = await db.inspection.create({
     data: {
       propertyId: data.propertyId,
@@ -100,9 +89,7 @@ export async function POST(request: Request) {
       inspector: data.inspector || null,
       nextDueDate: data.nextDueDate ? new Date(data.nextDueDate) : null,
       overallRating: data.overallRating ?? null,
-      status: data.status ?? defaultStatus,
-      preChecklistToken,
-      preChecklistExpiresAt,
+      status: data.status ?? "scheduled",
     },
   });
 

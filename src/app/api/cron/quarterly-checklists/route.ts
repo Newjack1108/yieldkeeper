@@ -5,35 +5,40 @@ import { randomBytes } from "crypto";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
-/** Find tenancies due for quarterly checklist (3 months since last or since tenancy start) */
-function getTenanciesDueForQuarterlyChecklist() {
-  const now = new Date();
-  const threeMonthsAgo = new Date(now);
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DAYS_PER_QUARTER = 90;
 
-  return db.tenancy.findMany({
+/** Current quarter index since tenancy start (0, 1, 2, 3...) */
+function getQuarterIndexSinceStart(tenancyStart: Date, at: Date): number {
+  const ms = at.getTime() - tenancyStart.getTime();
+  return Math.floor(ms / (DAYS_PER_QUARTER * MS_PER_DAY));
+}
+
+/** Find tenancies due for quarterly checklist based on tenancy start date (Q1, Q2, Q3, Q4) */
+async function getTenanciesDueForQuarterlyChecklist() {
+  const now = new Date();
+  const tenancies = await db.tenancy.findMany({
     where: {
       status: "active",
-      tenant: {
-        phone: { not: null },
-      },
+      tenant: { phone: { not: null } },
     },
     include: {
       tenant: { select: { id: true, name: true, phone: true } },
       property: { select: { id: true, address: true } },
-      quarterlyChecklists: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
+      quarterlyChecklists: true,
     },
-  }).then((tenancies) => {
-    return tenancies.filter((t) => {
-      const lastChecklist = t.quarterlyChecklists[0];
-      if (lastChecklist) {
-        return lastChecklist.createdAt < threeMonthsAgo;
-      }
-      return t.startDate < threeMonthsAgo;
+  });
+
+  return tenancies.filter((t) => {
+    const currentQuarter = getQuarterIndexSinceStart(t.startDate, now);
+    if (currentQuarter < 0) return false; // Tenancy not started yet
+
+    const alreadySentForThisQuarter = t.quarterlyChecklists.some((qc) => {
+      const sentQuarter = getQuarterIndexSinceStart(t.startDate, qc.createdAt);
+      return sentQuarter === currentQuarter;
     });
+
+    return !alreadySentForThisQuarter;
   });
 }
 
@@ -47,6 +52,7 @@ export async function POST(request: Request) {
 
   const baseUrl =
     process.env.WEBHOOK_BASE_URL ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
