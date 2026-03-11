@@ -54,6 +54,7 @@ const TYPE_LABELS: Record<string, string> = {
   insurance: "Insurance",
   mortgage: "Mortgage",
   inspection_photo: "Inspection photo",
+  fault_photo: "Fault photo",
   other: "Other",
 };
 

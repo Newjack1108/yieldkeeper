@@ -21,6 +21,10 @@ export default async function TenantMaintenancePage() {
         propertyMaintenanceTask: {
           select: { id: true, taskType: true, name: true, price: true },
         },
+        documents: {
+          where: { type: "fault_photo" },
+          select: { url: true },
+        },
       },
       orderBy: { reportedDate: "desc" },
     }),
@@ -64,6 +68,8 @@ export default async function TenantMaintenancePage() {
     estimatedCost: m.estimatedCost != null ? Number(m.estimatedCost) : null,
     propertyMaintenanceTaskId: m.propertyMaintenanceTaskId,
     taskName: m.propertyMaintenanceTask?.name,
+    photoCount: m.documents.length,
+    firstPhotoUrl: m.documents[0]?.url ?? null,
   }));
 
   return (

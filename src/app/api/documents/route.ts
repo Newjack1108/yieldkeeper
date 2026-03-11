@@ -11,6 +11,7 @@ const DOCUMENT_TYPES = [
   "insurance",
   "mortgage",
   "inspection_photo",
+  "fault_photo",
   "other",
 ] as const;
 

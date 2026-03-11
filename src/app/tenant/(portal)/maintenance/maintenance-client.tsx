@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { CldUploadWidget } from "next-cloudinary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Upload, X, Image } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -70,6 +72,8 @@ type Maintenance = {
   estimatedCost: number | null;
   propertyMaintenanceTaskId: string | null;
   taskName?: string;
+  photoCount?: number;
+  firstPhotoUrl?: string | null;
 };
 type AvailableTask = { id: string; taskType: string; name: string; price: number };
 type AvailableTasksByProperty = {
@@ -160,6 +164,7 @@ export function MaintenanceClient({
   const [payingId, setPayingId] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [imageUrls, setImageUrls] = useState<{ url: string; filename: string }[]>([]);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -190,6 +195,12 @@ export function MaintenanceClient({
         body.title = title;
         body.description = description || null;
       }
+      if (imageUrls.length > 0) {
+        body.imageUrls = imageUrls.map((img) => ({
+          url: img.url,
+          filename: img.filename,
+        }));
+      }
       const res = await fetch("/api/tenant-portal/maintenance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,6 +217,7 @@ export function MaintenanceClient({
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setImageUrls([]);
       router.refresh();
     } catch {
       setError("An error occurred. Please try again.");
@@ -245,7 +257,8 @@ export function MaintenanceClient({
         <CardHeader>
           <CardTitle>Request maintenance</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Choose a predefined task or describe a custom request
+            Report repairs or faults. Choose a predefined task or describe a
+            custom request. You can attach photos to help describe the issue.
           </p>
         </CardHeader>
         <CardContent>
@@ -376,6 +389,92 @@ export function MaintenanceClient({
                 </SelectContent>
               </Select>
             </div>
+
+            {process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET &&
+            process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ? (
+              <div className="space-y-2">
+                <Label>Photos of the fault (optional)</Label>
+                <div className="flex flex-wrap gap-3">
+                  {imageUrls.map((img, idx) => (
+                    <div
+                      key={`${img.url}-${idx}`}
+                      className="relative group rounded-lg border overflow-hidden w-20 h-20 shrink-0"
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.filename}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImageUrls((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
+                        }
+                        className="absolute top-1 right-1 rounded-full bg-destructive/90 p-1 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove photo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <CldUploadWidget
+                    uploadPreset={
+                      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+                    }
+                    onSuccess={(result: unknown) => {
+                      const info = (result as { info?: { secure_url?: string; original_filename?: string } })
+                        ?.info;
+                      const url = info?.secure_url;
+                      if (url && typeof url === "string") {
+                        setImageUrls((prev) =>
+                          prev.length < 5
+                            ? [
+                                ...prev,
+                                {
+                                  url,
+                                  filename: info?.original_filename ?? "photo",
+                                },
+                              ]
+                            : prev
+                        );
+                      }
+                    }}
+                    options={{
+                      resourceType: "image",
+                      multiple: true,
+                      maxFiles: 5,
+                    }}
+                    config={
+                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+                        ? {
+                            cloud: {
+                              cloudName:
+                                process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+                            },
+                          }
+                        : undefined
+                    }
+                  >
+                    {({ open }) => (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-20 h-20 shrink-0 flex flex-col gap-1"
+                        onClick={() => open()}
+                        disabled={imageUrls.length >= 5}
+                      >
+                        <Upload className="h-6 w-6" />
+                        <span className="text-xs">Add photo</span>
+                      </Button>
+                    )}
+                  </CldUploadWidget>
+                </div>
+              </div>
+            ) : null}
+
             <Button
               type="submit"
               size={isMobile ? "lg" : "default"}
@@ -423,7 +522,18 @@ export function MaintenanceClient({
                         {STATUS_LABELS[m.status] ?? m.status}
                       </Badge>
                     </div>
-                    <p className="font-medium">{m.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{m.title}</p>
+                      {(m.photoCount ?? 0) > 0 && (
+                        <span
+                          className="flex items-center gap-1 text-xs text-muted-foreground"
+                          title={`${m.photoCount} photo${(m.photoCount ?? 0) > 1 ? "s" : ""}`}
+                        >
+                          <Image className="h-3.5 w-3.5" />
+                          {m.photoCount}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm text-muted-foreground">
                         {m.quotedAmount != null
@@ -482,7 +592,20 @@ export function MaintenanceClient({
                       <TableCell>
                         {format(new Date(m.reportedDate), "dd MMM yyyy")}
                       </TableCell>
-                      <TableCell>{m.title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{m.title}</span>
+                          {(m.photoCount ?? 0) > 0 && (
+                            <span
+                              className="flex items-center gap-1 text-xs text-muted-foreground"
+                              title={`${m.photoCount} photo${(m.photoCount ?? 0) > 1 ? "s" : ""}`}
+                            >
+                              <Image className="h-3.5 w-3.5" />
+                              {m.photoCount}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {m.quotedAmount != null
                           ? `£${m.quotedAmount.toFixed(2)} (quoted)`

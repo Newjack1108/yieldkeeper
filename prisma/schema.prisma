@@ -506,7 +506,7 @@ model Document {
   tenancyId            String?
   maintenanceRequestId String?
   complianceRecordId   String?
-  type                 String   // tenancy_agreement, certificate, invoice, insurance, mortgage, inspection_photo, other
+  type                 String   // tenancy_agreement, certificate, invoice, insurance, mortgage, inspection_photo, fault_photo, other
   filename             String
   url                  String
   mimeType             String?

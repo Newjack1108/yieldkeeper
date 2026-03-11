@@ -4,6 +4,11 @@ import { getTenantForLoginUser } from "@/lib/tenant-portal";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
+const imageUrlSchema = z.object({
+  url: z.string().url(),
+  filename: z.string().optional(),
+});
+
 const createSchema = z
   .object({
     tenancyId: z.string().min(1, "Tenancy is required"),
@@ -14,6 +19,7 @@ const createSchema = z
       .enum(["low", "medium", "urgent", "emergency"])
       .optional()
       .default("medium"),
+    imageUrls: z.array(imageUrlSchema).optional().default([]),
   })
   .refine(
     (data) => data.propertyMaintenanceTaskId != null || (data.title != null && data.title.length > 0),
@@ -177,6 +183,20 @@ export async function POST(request: Request) {
       estimatedCost,
     },
   });
+
+  if (data.imageUrls && data.imageUrls.length > 0) {
+    await db.document.createMany({
+      data: data.imageUrls.map((img) => ({
+        propertyId: tenancy.propertyId,
+        tenantId: tenant.id,
+        tenancyId: tenancy.id,
+        maintenanceRequestId: maintenance.id,
+        type: "fault_photo",
+        url: img.url,
+        filename: img.filename ?? "photo",
+      })),
+    });
+  }
 
   return NextResponse.json({
     id: maintenance.id,
